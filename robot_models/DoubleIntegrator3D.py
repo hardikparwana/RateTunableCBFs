@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 
 class DoubleIntegrator3D:
     
-    def __init__(self,X0,dt,ax,id, color='r',palpha=1.0, plot=True):
+    def __init__(self,X0,dt,ax,id = 0, mode = 'ego', target = 0, color='r',palpha=1.0, plot=True):
         '''
         X0: iniytial state
         dt: simulation time step
@@ -82,6 +82,8 @@ class DoubleIntegrator3D:
         
         h2 = h1_dot + self.alpha[0] * h1
         
+        assert(h2>=0)
+        
         dh2_dxi = np.append( 2*(self.X[3:6] - agent.Xdot()[0:3]),  self.X[0:3] - agent.X[0:3]  , axis=1)
         
         if agent.type=='SingleIntegrator3D':  # ?? = 0??
@@ -94,6 +96,8 @@ class DoubleIntegrator3D:
             dh2_dxj = np.append( -2*(self.X[3:6] - agent.Xdot()[0:3]),  -(self.X[0:3] - agent.X[0:3])  , axis=1)
         else:
             dh2_dxj = -2*(self.X[3:6] - agent.Xdot()[0:3]).T
+            
+        return h2, dh2_dxi, dh2_dxj
             
 # For testing only!    
 if 0:           

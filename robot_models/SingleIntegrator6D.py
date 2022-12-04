@@ -8,7 +8,7 @@ from scipy.spatial.transform import Rotation as R
 
 class SingleIntegrator6D:
     
-    def __init__(self,X0,dt,ax,id = 0, color='r',palpha=1.0, plot=True, cone_length = 3, cone_angle = np.pi/3):
+    def __init__(self,X0,dt,ax,id = 0, mode = 'ego', target = 0, color='r',palpha=1.0, plot=True, nominal_plot=True, cone_length = 3, cone_angle = np.pi/3):
         '''
         X0: iniytial state
         dt: simulation time step
@@ -20,6 +20,9 @@ class SingleIntegrator6D:
         
         X0 = X0.reshape(-1,1)
         self.X = X0
+        self.X_nominal = np.copy(self.X)
+        
+        self.target = target
         self.dt = dt
         self.id = id
         self.color = color
@@ -44,10 +47,15 @@ class SingleIntegrator6D:
         
         # Plot handles
         self.plot = plot
+        self.plot_nominal = nominal_plot
         if self.plot:
             self.body = ax.scatter([],[],[],c=self.color,alpha=palpha,s=40)
             self.cone = ax.plot_surface(self.coneX, self.coneY, self.coneZ, alpha=0.4,linewidth=0, color = self.color)#, cmap=cm.coolwarm)
             self.render_plot()
+        if self.plot_nominal:
+            self.body_nominal = ax.scatter([],[],[],c=self.color,alpha=palpha,s=40)
+            self.render_plot_nominal()
+            
         self.Xs = np.copy(self.X)
         self.Us = np.copy(self.U)
         
@@ -67,6 +75,12 @@ class SingleIntegrator6D:
         self.Xs = np.append(self.Xs,self.X,axis=1)
         self.Us = np.append(self.Us,self.U,axis=1)
         return self.X
+    
+    def step_nominal(self,U): #Just holonomic X,T acceleration
+        self.U_nominal = U.reshape(-1,1)
+        self.X_nominal = self.X_nominal + ( self.f() + self.g() @ self.U_nominal )*self.dt
+        self.render_plot_nominal()
+        return self.X_nominal
     
     def Xdot(self):
         return self.f() + self.g() @ self.U
@@ -92,6 +106,11 @@ class SingleIntegrator6D:
             self.cone.remove()
             self.cone = self.ax.plot_surface( xmesh, ymesh, zmesh, alpha=0.4,linewidth=0, color=self.color )
             
+    def render_plot_nominal(self):
+        if self.plot_nominal:
+            x = np.array([self.X[0,0],self.X[1,0],self.X[2,0]])
+            self.body_nominal._offsets3d = ([[x[0]],[x[1]],[x[2]]])
+            
     def lyapunov(self, G, type='none'):
         V = np.linalg.norm( self.X[0:3] - G[0:3] )**2
         dV_dxi = np.append( 2*( self.X[0:3] - G[0:3] ).T, [[0, 0, 0]] , axis = 1 )
@@ -108,6 +127,10 @@ class SingleIntegrator6D:
             dV_dxj = -2*( self.X[0:3] - G[0:3] ).T
         
         return V, dV_dxi, dV_dxj
+    
+    def nominal_input(self, G, type='none'):
+        V, dV_dxi, dV_dxj = self.lyapunov(self, G, type)
+        return -3.0*dV_dxi.T/np.linalg.norm(dV_dxi)
     
     def agent_barrier(self, agent, d_min):
         

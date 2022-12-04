@@ -3,7 +3,7 @@ from utils.utils import wrap_angle
 
 class Unicycle2D:
     
-    def __init__(self,X0,dt,ax,id = 0,color='r',palpha=1.0,plot=True):
+    def __init__(self,X0,dt,ax,id = 0, mode = 'ego', target = 0, color='r',palpha=1.0,plot=True, nominal_plot=True):
         '''
         X0: iniytial state
         dt: simulation time step
@@ -14,7 +14,10 @@ class Unicycle2D:
         self.type = 'Unicycle'
         
         self.X = X0.reshape(-1,1)
+        self.X_nominal = np.copy(self.X)
         self.dt = dt
+        self.target = target
+        
         self.id = id
         self.color = color
         self.palpha = palpha
@@ -23,6 +26,7 @@ class Unicycle2D:
         
         # Plot handles
         self.plot = plot
+        self.plot_nominal = nominal_plot
         if self.plot:
             self.body = ax.scatter([],[],[],alpha=palpha,s=60,facecolors=self.color,edgecolors=self.color) #facecolors='none'
             self.radii = 1.0
@@ -30,6 +34,12 @@ class Unicycle2D:
             if palpha==1:
                 self.axis = ax.plot([self.X[0,0],self.X[0,0]+self.radii*np.cos(self.X[3,0])],[self.X[1,0],self.X[1,0]+self.radii*np.sin(self.X[3,0])],[0,0], color=self.color)
             self.render_plot()
+        if self.plot_nominal:
+            self.body_nominal = ax.scatter([],[],[],alpha=palpha,s=60,facecolors=self.color,edgecolors=self.color) #facecolors='none'
+            if palpha==1:
+                self.axis_nominal = ax.plot([self.X_nominal[0,0],self.X_nominal[0,0]+self.radii*np.cos(self.X_nominal[3,0])],[self.X_nominal[1,0],self.X_nominal[1,0]+self.radii*np.sin(self.X_nominal[3,0])],[0,0], color=self.color)
+            self.render_plot_nominal()
+            
         self.Xs = np.copy(self.X)
         self.Us = np.copy(self.U)
         
@@ -39,6 +49,15 @@ class Unicycle2D:
     def g(self):
         return np.array([ [ np.cos(self.X[3,0]), 0 ],
                           [ np.sin(self.X[3,0]), 0],
+                          [ 0, 0],
+                          [0, 1] ])  
+        
+    def f_nominal(self):
+        return np.array([0,0,0,0]).reshape(-1,1)
+    
+    def g_nominal(self):
+        return np.array([ [ np.cos(self.X_nominal[3,0]), 0 ],
+                          [ np.sin(self.X_nominal[3,0]), 0],
                           [ 0, 0],
                           [0, 1] ])  
         
@@ -54,6 +73,13 @@ class Unicycle2D:
         self.Us = np.append(self.Us,self.U,axis=1)
         return self.X
     
+    def step(self,U): 
+        self.U_nominal = U.reshape(-1,1)
+        self.X_nominal = self.X_nominal + ( self.f_nominal() + self.g_nominal() @ self.U_nominal )*self.dt
+        self.X_nominal[3,0] = wrap_angle(self.X_nominal[3,0])
+        self.render_plot_nominal()
+        return self.X_nominal
+    
     def render_plot(self):
         if self.plot:
             x = np.array([self.X[0,0],self.X[1,0],self.X[2,0]])
@@ -64,6 +90,16 @@ class Unicycle2D:
                 self.axis[0].set_xdata( [self.X[0,0],self.X[0,0]+self.radii*np.cos(self.X[3,0])] )
                 self.axis[0].set_3d_properties( [self.X[2,0],self.X[2,0]] )
         # self.axis = ax.plot([self.X[0,0],self.X[0,0]+np.cos(self.X[2,0])],[self.X[1,0],self.X[1,0]+np.sin(self.X[2,0])])
+    
+    def render_plot_nominal(self):
+        if self.plot_nominal:
+            x = np.array([self.X_nominal[0,0],self.X_nominal[1,0],self.X_nominal[2,0]])
+            self.body_nominal._offsets3d = ([[x[0]],[x[1]],[x[2]]])
+            
+            if self.palpha==1:
+                self.axis_nominal[0].set_ydata([self.X_nominal[1,0],self.X_nominal[1,0]+self.radii*np.sin(self.X_nominal[3,0])])
+                self.axis_nominal[0].set_xdata( [self.X_nominal[0,0],self.X_nominal[0,0]+self.radii*np.cos(self.X_nominal[3,0])] )
+                self.axis_nominal[0].set_3d_properties( [self.X_nominal[2,0],self.X_nominal[2,0]] )
     
     def lyapunov(self, G, type='none'):
         V = np.linalg.norm( self.X[0:3] - G[0:3] )**2
@@ -82,7 +118,7 @@ class Unicycle2D:
         
         return V, dV_dxi, dV_dxj
     
-    def nominal_input(self,G, d_min = 0.3):
+    def nominal_input(self,G, type, d_min = 0.3):
         G = np.copy(G.reshape(-1,1))
         k_omega = 2.0 #0.5#2.5
         k_v = 2.0 #0.5
