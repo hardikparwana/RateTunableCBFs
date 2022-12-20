@@ -6,9 +6,9 @@ from matplotlib.patches import Rectangle
 from matplotlib import cm
 from scipy.spatial.transform import Rotation as R
 
-class SingleIntegrator6D:
+class Surveillance:
     
-    def __init__(self,X0,dt,ax,id = 0, mode = 'ego', target = 0, color='r',palpha=1.0, plot=True, nominal_plot=True, cone_length = 3, cone_angle = np.pi/3):
+    def __init__(self,X0,dt,ax,id = 0, mode = 'ego', target = 0, color='r',palpha=1.0, plot=True, nominal_plot=True, cone_length = 3, cone_angle = np.pi/3, num_robots = 1, num_constraints = 0):
         '''
         X0: iniytial state
         dt: simulation time step
@@ -16,13 +16,14 @@ class SingleIntegrator6D:
         id: robot id
         '''
         
-        self.type = 'SingleIntegrator2D'        
+        self.type = 'Surveillance'        
         
         X0 = X0.reshape(-1,1)
         self.X = X0
         self.X_nominal = np.copy(self.X)
         
         self.target = target
+        self.mode = mode
         self.dt = dt
         self.id = id
         self.color = color
@@ -34,6 +35,7 @@ class SingleIntegrator6D:
         self.cone_resolution = 30
         self.cone_length = cone_length
         height = cone_length*np.cos(cone_angle)
+        self.cone_angle = cone_angle
         r = np.linspace( 0, cone_length*np.sin(cone_angle), self.cone_resolution )  # radius changes from 0 to Max value
         h = np.linspace( 0, height, self.cone_resolution )
         th = np.linspace( 0, 2*np.pi, self.cone_resolution )
@@ -59,7 +61,8 @@ class SingleIntegrator6D:
         self.Xs = np.copy(self.X)
         self.Us = np.copy(self.U)
         
-        
+        self.U_ref = np.array([0,0]).reshape(-1,1)
+        self.U_nominal = np.array([0,0]).reshape(-1,1)
         
     def f(self):
         return np.array([0,0,0,0,0,0]).reshape(-1,1)
@@ -167,7 +170,7 @@ if 0:
     z = [0,0,0,0]
     verts = [list(zip(x,y,z))]
     ax.add_collection3d(Poly3DCollection(verts,facecolor='gray', alpha=0.5))       
-    robot = SingleIntegrator6D(np.array([0,0,2,0,0,0]), 0.05, ax, 0)
+    robot = Surveillance(np.array([0,0,2,0,0,0]), 0.05, ax, 0)
     ax.set_xlabel('X')
     ax.set_ylabel('Y')
     ax.set_zlabel('Z')

@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 
 class SingleIntegrator3D:
     
-    def __init__(self,X0,dt,ax,id = 0, mode = 'ego', target = 0, color='r',palpha=1.0, plot=True, nominal_plot=True):
+    def __init__(self,X0,dt,ax,id = 0, mode = 'ego', grounded = False, target = 0, color='r',alpha = 0.8, palpha=1.0, plot=True, nominal_plot=True, num_constraints = 0, num_robots = 1):
         '''
         X0: iniytial state
         dt: simulation time step
@@ -11,13 +11,15 @@ class SingleIntegrator3D:
         id: robot id
         '''
         
-        self.type = 'SingleIntegrator2D'        
+        self.type = 'SingleIntegrator3D'        
         
         X0 = X0.reshape(-1,1)
         self.X = X0
         
         self.X_nominal = np.copy(self.X)
         self.target = target
+        self.mode = mode
+        self.grounded = grounded
         
         self.dt = dt
         self.id = id
@@ -39,8 +41,16 @@ class SingleIntegrator3D:
         self.Xs = np.copy(self.X)
         self.Us = np.copy(self.U)
         
+        # to store constraints
+        self.A = np.zeros((num_constraints,3))
+        self.b = np.zeros((num_constraints,1))
+        self.agent_objective = [0] * num_robots
+        self.U_ref = np.array([0,0,0]).reshape(-1,1)
+        self.U_nominal = np.array([0,0,0]).reshape(-1,1)
+        self.alpha = alpha*np.ones((1,num_robots))
+        
     def f(self):
-        return np.array([0,0,0]).reshape(-1,1)
+        return np.array([0,0,0]).reshape(-1,1)     
     
     def g(self):
         if self.grounded:
@@ -79,7 +89,7 @@ class SingleIntegrator3D:
             
     def render_plot_nominal(self):
         if self.plot_nominal:
-            x = np.array([self.X[0,0],self.X[1,0],self.X[2,0]])
+            x = np.array([self.X_nominal[0,0],self.X_nominal[1,0],self.X_nominal[2,0]])
             self.body_nominal._offsets3d = ([[x[0]],[x[1]],[x[2]]])
             
     def lyapunov(self, G, type='none'):
@@ -99,13 +109,30 @@ class SingleIntegrator3D:
         
         return V, dV_dxi, dV_dxj
     
+    def lyapunov_nominal(self, G, type='none'):
+        V = np.linalg.norm( self.X_nominal[0:3] - G[0:3] )**2
+        dV_dxi = 2*( self.X_nominal[0:3] - G[0:3] ).T
+        
+        if type=='SingleIntegrator3D':
+            dV_dxj = -2*( self.X_nominal[0:3] - G[0:3] ).T
+        elif type=='SingleIntegrator6D':
+            dV_dxj = np.append( -2*( self.X_nominal[0:3] - G[0:3] ).T, [[0, 0, 0]], axis = 1 )
+        elif type=='Unicycle2D':
+            dV_dxj = np.append( -2*( self.X_nominal[0:3] - G[0:3] ).T, [[0]], axis=1  )
+        elif type=='DoubleIntegrator3D':
+            dV_dxj = np.append( -2*( self.X_nominal[0:3] - G[0:3] ).T, [[0, 0, 0]], axis = 1 )
+        else:
+            dV_dxj = -2*( self.X_nominal[0:3] - G[0:3] ).T
+        
+        return V, dV_dxi, dV_dxj
+    
     def nominal_input( self, G, type='none' ):
         V, dV_dxi, dV_dxj = self.lyapunov( G, type )
         return -3.0*dV_dxi.T/np.linalg.norm(dV_dxi)
     
     def agent_barrier(self, agent, d_min):
         
-        if agent.type != 'SingleIntegrator6D':
+        if agent.type != 'Surveillance':
             h = np.linalg.norm( self.X - agent.X[0:3] )**2 - d_min**2
             dh_dxi = 2*( self.X - agent.X[0:3] ).T
             
@@ -122,12 +149,14 @@ class SingleIntegrator3D:
         else:
             # it is a surveillance one
             GX = np.copy(agent.X)
+            radii = 0
             if self.X[2,0] < GX[2,0]: # lower height than the 
-                
-            h = np.linalg.norm( self.X - agent.X[0:3] )**2 - d_min**2
-            dh_dxi = 2*( self.X - agent.X[0:3] ).T
+                radii =  (GX[2,0]-self.X[2,0]) * np.tan(agent.cone_angle)
+            GX[2,0] = self.X[2,0]
+            h = np.linalg.norm( self.X[0:3] - GX[0:3] )**2 - (d_min + radii)**2
+            dh_dxi = 2*( self.X[0:3] - GX[0:3] ).T
         
-            dh_dxj = np.append( -2*( self.X - agent.X[0:3] ).T, [[0, 0, 0]], axis = 1 )
+            dh_dxj = np.append( -2*( self.X[0:3] - GX[0:3] ).T, [[0, 0, 0]], axis = 1 )
         
         return h, dh_dxi, dh_dxj    
 # For testing only!    
