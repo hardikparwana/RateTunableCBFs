@@ -1,10 +1,11 @@
 import numpy as np
-from utils.utils import wrap_angle
+from utils.utils import wrap_angle, quat_to_rot
+import matplotlib.pyplot as plt
 from trust_utils import *
 
-class Unicycle2D:
+class Quadrotor3D:
     
-    def __init__(self,X0,dt,ax,id = 0, mode = 'ego', target = 0, color='r',alpha = 0.8, palpha=1.0,plot=True, nominal_plot=True, num_constraints = 0, num_robots = 1):
+    def __init__(self,X0,dt,ax,id = 0, mode = 'ego', target = 0, color='r',alpha = 0.8, palpha=1.0,plot=True, nominal_plot=False, num_constraints = 0, num_robots = 1):
         '''
         X0: iniytial state
         dt: simulation time step
@@ -12,29 +13,35 @@ class Unicycle2D:
         id: robot id
         '''
         
-        self.type = 'Unicycle2D'
+        self.type = 'Quadrotor3D'
         
         self.X = X0.reshape(-1,1)
         self.X_nominal = np.copy(self.X)
         self.dt = dt
         self.target = target
         self.mode = mode
+        self._g = 9.81
+        self.mass = 0.5
         
         self.id = id
         self.color = color
         self.palpha = palpha
         
-        self.U = np.array([0,0]).reshape(-1,1)
+        self.U = np.array([0,0,0,0]).reshape(-1,1)
         
         # Plot handles
         self.plot = plot
         self.plot_nominal = nominal_plot
         if self.plot:
-            self.body = ax.scatter([],[],[],alpha=palpha,s=60,facecolors=self.color,edgecolors=self.color) #facecolors='none'
-            self.radii = 1.0
-            self.palpha = palpha
-            if palpha==1:
-                self.axis = ax.plot([self.X[0,0],self.X[0,0]+self.radii*np.cos(self.X[3,0])],[self.X[1,0],self.X[1,0]+self.radii*np.sin(self.X[3,0])],[0,0], color=self.color)
+            self.radii = 0.3
+            self.bodyx1 = ax.scatter([],[],[],alpha=palpha,s=60,facecolors='g',edgecolors=self.color) #facecolors='none'
+            # self.body = ax.scatter([],[],[],c=color,alpha=palpha,s=10)
+            self.bodyx2 = ax.scatter([],[],[],alpha=palpha,s=60,facecolors='r',edgecolors=self.color) #facecolors='none'
+            self.bodyy1 = ax.scatter([],[],[],alpha=palpha,s=60,facecolors=self.color,edgecolors=self.color) #facecolors='none'
+            self.bodyy2 = ax.scatter([],[],[],alpha=palpha,s=60,facecolors=self.color,edgecolors=self.color) #facecolors='none'
+            self.axisX = ax.plot([0,0],[0,0],[0,0], color='k')
+            self.axisY = ax.plot([0,0],[0,0],[0,0], color='g')
+            
             self.render_plot()
         if self.plot_nominal:
             self.body_nominal = ax.scatter([],[],[],alpha=0.3,s=60,facecolors=self.color,edgecolors=self.color) #facecolors='none'
@@ -56,23 +63,47 @@ class Unicycle2D:
         # trust
         self.trust = np.zeros((1,num_robots))
         
-    def f(self):
-        return np.array([0,0,0,0]).reshape(-1,1)
+    def f(self): 
+        ff = np.zeros((10,1))
+        ff[0,0] = self.X[3,0]
+        ff[1,0] = self.X[4,0]
+        ff[2,0] = self.X[5,0]
+        ff[5,0] = - self._g    
+        return ff
     
     def g(self):
-        return np.array([ [ np.cos(self.X[3,0]), 0],
-                          [ np.sin(self.X[3,0]), 0],
-                          [ 0, 0],
-                          [0, 1] ])  
+        quat = self.X[6:10].reshape(1,-1)[0]
+        R = quat_to_rot(quat)
+        gg = np.zeros((10,4))
+        gg[3,0] = R[2,0] / self.mass
+        gg[4,0] = R[2,1] / self.mass
+        gg[5,0] = R[2,2] / self.mass
+        gg[6,1] = -quat[1]; gg[6,2] = -quat[2]; gg[6,3] = -quat[3]; 
+        gg[7,1] =  quat[0]; gg[7,2] = -quat[3]; gg[7,3] =  quat[2]; 
+        gg[8,1] =  quat[3]; gg[8,2] =  quat[0]; gg[8,3] = -quat[1]; 
+        gg[9,1] = -quat[2]; gg[9,2] =  quat[1]; gg[9,3] =  quat[0];         
+        return gg
         
     def f_nominal(self):
-        return np.array([0,0,0,0]).reshape(-1,1)
+        ff = np.zeros((10,1))
+        ff[0,0] = self.X[3,0]
+        ff[1,0] = self.X[4,0]
+        ff[2,0] = self.X[5,0]
+        ff[5,0] = - self.g    
+        return ff
     
     def g_nominal(self):
-        return np.array([ [ np.cos(self.X_nominal[3,0]), 0 ],
-                          [ np.sin(self.X_nominal[3,0]), 0],
-                          [ 0, 0],
-                          [0, 1] ])  
+        quat = self.X[6:10].reshape(1,-1)[0]
+        R = quat_to_rot(quat)
+        gg = np.zeros((10,6))
+        gg[3,0] = R[2,0] / self.mass
+        gg[4,0] = R[2,1] / self.mass
+        gg[5,0] = R[2,2] / self.mass
+        gg[6,1] = -quat[1]; gg[6,2] = -quat[2]; gg[6,3] = -quat[3]; 
+        gg[7,1] =  quat[0]; gg[7,2] = -quat[3]; gg[7,3] =  quat[2]; 
+        gg[8,1] =  quat[3]; gg[8,2] =  quat[0]; gg[8,3] = -quat[1]; 
+        gg[9,1] = -quat[2]; gg[9,2] =  quat[1]; gg[9,3] =  quat[0];         
+        return gg
         
     def Xdot(self):
         return self.f() + self.g() @ self.U     
@@ -80,7 +111,8 @@ class Unicycle2D:
     def step(self,U): 
         self.U = U.reshape(-1,1)
         self.X = self.X + ( self.f() + self.g() @ self.U )*self.dt
-        self.X[3,0] = wrap_angle(self.X[3,0])
+        self.X[6:10,0] = self.X[6:10,0]/np.linalg.norm(self.X[6:10,0])
+        # print(f"roll:{2*np.arctan2(self.X[7,0],self.X[6,0])*180/np.pi}")
         self.render_plot()
         self.Xs = np.append(self.Xs,self.X,axis=1)
         self.Us = np.append(self.Us,self.U,axis=1)
@@ -89,20 +121,37 @@ class Unicycle2D:
     def step_nominal(self,U): 
         self.U_nominal = U.reshape(-1,1)
         self.X_nominal = self.X_nominal + ( self.f_nominal() + self.g_nominal() @ self.U_nominal )*self.dt
-        self.X_nominal[3,0] = wrap_angle(self.X_nominal[3,0])
+        self.X_nominal[6:10,0] = self.X_nominal[6:10,0]/np.linalg.norm(self.X_nominal[6:10,0])
         self.render_plot_nominal()
         return self.X_nominal
     
     def render_plot(self):
         if self.plot:
-            x = np.array([self.X[0,0],self.X[1,0],self.X[2,0]])
-            self.body._offsets3d = ([[x[0]],[x[1]],[x[2]]])
+            x = self.X[0:3] # position
+            q = self.X[6:10]
+            bodyx1 = np.array([[self.radii],[0],[0]])
+            bodyx2 = - np.array([[self.radii],[0],[0]])
+            bodyy1 = np.array([[0],[self.radii],[0]])
+            bodyy2 = - np.array([[0],[self.radii],[0]])
+            R = quat_to_rot( q.reshape(1,-1)[0] )
+            bodyx1 = x + R @ bodyx1
+            bodyx2 = x + R @ bodyx2
+            bodyy1 = x + R @ bodyy1
+            bodyy2 = x + R @ bodyy2
+            # self.body._offsets3d = ([[x[0]],[x[1]],[x[2]]])
+            self.bodyx1._offsets3d = ( [ [bodyx1[0,0]], [bodyx1[1,0]], [bodyx1[2,0]] ])
+            self.bodyx2._offsets3d = ( [ [bodyx2[0,0]], [bodyx2[1,0]], [bodyx2[2,0]] ])
+            self.bodyy1._offsets3d = ( [ [bodyy1[0,0]], [bodyy1[1,0]], [bodyy1[2,0]] ])
+            self.bodyy2._offsets3d = ( [ [bodyy2[0,0]], [bodyy2[1,0]], [bodyy2[2,0]] ])
             
-            if self.palpha==1:
-                self.axis[0].set_ydata([self.X[1,0],self.X[1,0]+self.radii*np.sin(self.X[3,0])])
-                self.axis[0].set_xdata( [self.X[0,0],self.X[0,0]+self.radii*np.cos(self.X[3,0])] )
-                self.axis[0].set_3d_properties( [self.X[2,0],self.X[2,0]] )
-        # self.axis = ax.plot([self.X[0,0],self.X[0,0]+np.cos(self.X[2,0])],[self.X[1,0],self.X[1,0]+np.sin(self.X[2,0])])
+            self.axisX[0].set_xdata( [bodyx1[0,0],bodyx2[0,0]] )
+            self.axisX[0].set_ydata( [bodyx1[1,0],bodyx2[1,0]] )
+            self.axisX[0].set_3d_properties( [bodyx1[2,0],bodyx2[2,0]] )
+            
+            self.axisY[0].set_xdata( [bodyy1[0,0],bodyy2[0,0]] )
+            self.axisY[0].set_ydata( [bodyy1[1,0],bodyy2[1,0]] )
+            self.axisY[0].set_3d_properties( [bodyy1[2,0],bodyy2[2,0]] )
+            
     
     def render_plot_nominal(self):
         if self.plot_nominal:
@@ -202,3 +251,18 @@ class Unicycle2D:
         self.trust[0,id], asserted = compute_trust( A, b, agent.f() + agent.g() @ agent.U, agent.x_dot_nominal, h, min_dist, h_min )  
         self.alpha[0,id] = self.alpha[0,id] + alpha_der_max * self.trust[0,id]
             
+    
+# For testing only!    
+if 1:           
+    plt.ion()
+    fig = plt.figure()
+    ax = plt.axes(projection ="3d",xlim=(-2,2),ylim=(-2,2))             
+    angle = 0#np.pi/3
+    robot = Quadrotor3D(np.array([0.5,1,0.5,0,0,0,np.cos(angle/2),np.sin(angle/2),0,0]), 0.05, ax, 0)
+    # plt.show()
+
+    # plt.ion()
+    for i in range(100):
+        robot.step(np.array([0.5*9.81,0.9,0.0,0.0]).reshape(-1,1))
+        fig.canvas.draw()
+        fig.canvas.flush_events()

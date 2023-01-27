@@ -1,5 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
+from trust_utils import *
 
 class DoubleIntegrator3D:
     
@@ -48,6 +49,9 @@ class DoubleIntegrator3D:
         self.U_nominal = np.array([0,0,0]).reshape(-1,1)
         self.alpha = alpha * np.ones((1,num_robots))
         self.alpha1 = alpha/2 * np.ones((1,num_robots))
+        
+        # trust
+        self.trust = np.zeros((1,num_robots))
         
     def f(self):
         fm = np.zeros((6,1))
@@ -152,10 +156,11 @@ class DoubleIntegrator3D:
         ad = 4.0 * ( vd - self.X[3:6] )
         return ad
     
-    def agent_barrier(self, agent, d_min): # assuming velocity available??
+    def agent_barrier(self, agent, d_min, additional_info = False): # assuming velocity available??
                 
         if agent.type!='Surveillance':
-            h1 = np.linalg.norm( self.X[0:3] - agent.X[0:3] )**2 - d_min**2        
+            h1 = np.linalg.norm( self.X[0:3] - agent.X[0:3] )**2 - d_min**2     
+            dh1_dxi = np.append( 2*( self.X[0:3] - agent.X[0:3] ).T, [[ 0, 0, 0 ]], axis=1 )
             h1_dot = 2*( self.X[0:3] - agent.X[0:3] ).T @ ( self.X[3:6] - agent.Xdot()[0:3] )
             
             h2 = h1_dot + self.alpha1[0,agent.id] * h1
@@ -166,30 +171,80 @@ class DoubleIntegrator3D:
             
             if agent.type=='SingleIntegrator3D':  # ?? = 0??
                 dh2_dxj = -2*(self.X[3:6] - agent.Xdot()[0:3]).T - 2*self.alpha1[0,agent.id]*( self.X[0:3]-agent.X[0:3] ).T
+                dh1_dxj = -2*( self.X[0:3] - agent.X[0:3] ).T
             elif agent.type=='SingleIntegrator6D':
                 dh2_dxj = np.append( -2*( self.X[3:6] - agent.Xdot()[0:3] ).T - 2*self.alpha1[0,agent.id]*( self.X[0:3]-agent.X[0:3] ).T , [[0, 0, 0]], axis = 1 )
+                dh1_dxj = np.append( -2*( self.X[0:3] - agent.X[0:3] ).T, [[0, 0, 0]], axis=1 )
             elif agent.type=='Unicycle2D':
                 dh2_dxj = np.append( -2*( self.X[3:6] - agent.Xdot()[0:3] ).T - 2*self.alpha1[0,agent.id]*( self.X[0:3]-agent.X[0:3] ).T, [[0]], axis=1  )
+                dh1_dxj = np.append( -2*( self.X[0:3] - agent.X[0:3] ).T, [[0]], axis=1 )
             elif agent.type=='DoubleIntegrator3D':
                 dh2_dxj = np.append( -2*(self.X[3:6] - agent.Xdot()[0:3]).T - 2*self.alpha1[0,agent.id]*( self.X[0:3]-agent.X[0:3] ).T,  -2*(self.X[0:3] - agent.X[0:3]).T  , axis=1)
+                dh1_dxj = np.append( -2*( self.X[0:3] - agent.X[0:3] ).T, [[0,0,0]], axis=1 )
             else:
-                dh2_dxj = -2*(self.X[3:6] - agent.Xdot()[0:3]).T - 2*self.alpha1[0,agent.id]*( self.X[0:3]-agent.X[0:3] ).T         
-            return h2, dh2_dxi, dh2_dxj
+                dh2_dxj = -2*(self.X[3:6] - agent.Xdot()[0:3]).T - 2*self.alpha1[0,agent.id]*( self.X[0:3]-agent.X[0:3] ).T   
+                dh1_dxj = -2*( self.X[0:3] - agent.X[0:3] ).T     
+                
+            h1dot_estimated = dh1_dxi @ self.Xdot() + dh1_dxj @ agent.Xdot()
+            # if agent.id == 2:
+            #     print(f"h1dot:{h1_dot}, h1dot_estimated:{h1dot_estimated}") 
+            
+            if additional_info:
+                return h2, dh2_dxi, dh2_dxj, h1, dh1_dxi, dh1_dxj
+            else:
+                return h2, dh2_dxi, dh2_dxj
         else:
              # it is a surveillance one
             GX = np.copy(agent.X)
             radii = 0
             if self.X[2,0] < GX[2,0]: # lower height than the 
                 radii =  (GX[2,0]-self.X[2,0]) * np.tan(agent.cone_angle)
-            GX[2,0] = self.X[2,0]
+                GX[2,0] = self.X[2,0]
+            
             h1 = np.linalg.norm( self.X[0:3] - GX[0:3] )**2 - (d_min + radii)**2
-            h1_dot = 2*( self.X[0:3] - agent.X[0:3] ).T @ ( self.X[3:6] - agent.Xdot()[0:3] )
+            dh1_dxi = np.append( 2*( self.X[0:3] - agent.X[0:3] ).T, [[ 0, 0, 0 ]], axis=1 )
+            dh1_dxj = np.append( -2*( self.X[0:3] - agent.X[0:3] ).T, [[0, 0, 0]], axis=1 )
+            
+            h1_dot = 2*( self.X[0:3] - GX[0:3] ).T @ ( self.X[3:6] - agent.Xdot()[0:3] )
             h2 = h1_dot + self.alpha1[0,agent.id] * h1
             assert(h2>=0)
             
-            dh2_dxi = np.append( 2*(self.X[3:6] - agent.Xdot()[0:3]).T + 2*self.alpha1[0,agent.id]*( self.X[0:3]-agent.X[0:3] ).T,  2*(self.X[0:3] - agent.X[0:3]).T  , axis=1)
-            dh2_dxj = np.append( -2*( self.Xdot()[0:3] - agent.Xdot()[0:3] ).T - 2*self.alpha1[0,agent.id]*( self.X[0:3]-agent.X[0:3] ).T, [[0, 0, 0]], axis = 1 )
-            return h2, dh2_dxi, dh2_dxj
+            dh2_dxi = np.append( 2*(self.X[3:6] - agent.Xdot()[0:3]).T + 2*self.alpha1[0,agent.id]*( self.X[0:3]-GX[0:3] ).T,  2*(self.X[0:3] - GX[0:3]).T  , axis=1)
+            dh2_dxj = np.append( -2*( self.Xdot()[0:3] - agent.Xdot()[0:3] ).T - 2*self.alpha1[0,agent.id]*( self.X[0:3]-GX[0:3] ).T, [[0, 0, 0]], axis = 1 )
+
+            if additional_info:
+                return h2, dh2_dxi, dh2_dxj, h1, dh1_dxi, dh1_dxj
+            else:
+                return h2, dh2_dxi, dh2_dxj
+            
+    def trust_param_update( self, agent, id, d_min, uT, min_dist, h_min, alpha_der_max, dt = 0.01):
+        h2, dh2_dxi, dh2_dxj, h1, dh1_dxi, dh1_dxj = self.agent_barrier(agent, d_min, additional_info=True)  
+        
+        # first level
+        A = dh1_dxj
+        b = -self.alpha1[0,id] * h1  - dh1_dxi @ self.Xdot() 
+        trust1, asserted = compute_trust( A, b, agent.Xdot(), agent.x_dot_nominal, h1, min_dist, h_min )  
+        alpha1_dot = alpha_der_max * trust1 / dt
+        
+        if not asserted:
+            print(f" DI 1: self.if:{self.id}, target:{agent.id}, h1_dot should be:{ dh1_dxi @ self.Xdot() + dh1_dxj @ agent.Xdot() }, margin should be:{A @ agent.Xdot() + dh1_dxi @ self.Xdot() + self.alpha1[0,id] * h1}, should be:{dh1_dxi @ self.Xdot() + dh1_dxj @ agent.Xdot() + self.alpha1[0,id]*h1} ")
+        
+        # second level
+        A = dh2_dxj #@ robots[j].g()
+        b = -self.alpha[0,id] * h2  - dh2_dxi @ ( self.f() + self.g() @ uT ) - alpha1_dot * h1 #- dh_dxj @ robots[j].f() #- dh_dxi @ robots[j].U                    
+        self.trust[0,id], asserted = compute_trust( A, b, agent.Xdot(), agent.x_dot_nominal, h2, min_dist, h_min )  
+        alpha2_dot = alpha_der_max * self.trust[0,id] / dt
+        
+        if not asserted:
+            print(f" DI 2: self.if:{self.id}, target:{agent.id} ")
+            
+        # if agent.id==2:
+        #     print(f"alpha1:{self.alpha1[0,id]}, alpha2:{self.alpha[0,id]}, h1:{h1}, h2:{h2}, h2dot:{dh2_dxi @ ( self.f() + self.g() @ self.U ) + dh2_dxj @ ( agent.Xdot() )}, h2dot_best:{dh2_dxi @ ( self.f() + self.g() @ uT ) + dh2_dxj @ ( agent.Xdot() )}")
+        
+        # update alphas
+        self.alpha1[0,id] = self.alpha1[0,id] + alpha1_dot * dt
+        self.alpha[0,id] = self.alpha[0,id] + alpha2_dot * dt
+        
             
 # For testing only!    
 if 0:           

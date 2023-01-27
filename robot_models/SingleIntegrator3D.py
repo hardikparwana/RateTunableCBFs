@@ -1,5 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
+from trust_utils import *
 
 class SingleIntegrator3D:
     
@@ -48,6 +49,9 @@ class SingleIntegrator3D:
         self.U_ref = np.array([0,0,0]).reshape(-1,1)
         self.U_nominal = np.array([0,0,0]).reshape(-1,1)
         self.alpha = alpha*np.ones((1,num_robots))
+        
+        # trust
+        self.trust = np.zeros((1,num_robots))
         
     def f(self):
         return np.array([0,0,0]).reshape(-1,1)     
@@ -159,6 +163,14 @@ class SingleIntegrator3D:
             dh_dxj = np.append( -2*( self.X[0:3] - GX[0:3] ).T, [[0, 0, 0]], axis = 1 )
         
         return h, dh_dxi, dh_dxj    
+    
+    def trust_param_update( self, agent, id, d_min, uT, min_dist, h_min, alpha_der_max, dt = 0.01 ):
+        h, dh_dxi, dh_dxj = self.agent_barrier(agent, d_min)  
+        A = dh_dxj #@ robots[j].g()
+        b = -self.alpha[0,id] * h  - dh_dxi @ ( self.f() + self.g() @ uT ) #- dh_dxj @ robots[j].f() #- dh_dxi @ robots[j].U                    
+        self.trust[0,id], asserted = compute_trust( A, b, agent.f() + agent.g() @ agent.U, agent.x_dot_nominal, h, min_dist, h_min )  
+        self.alpha[0,id] = self.alpha[0,id] + alpha_der_max * self.trust[0,id]
+    
 # For testing only!    
 if 0:           
     plt.ion()

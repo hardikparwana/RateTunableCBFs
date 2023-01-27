@@ -2,7 +2,7 @@ import numpy as np
 from utils.utils import wrap_angle
 from trust_utils import *
 
-class Unicycle2D:
+class Unicycle2Dorder2:
     
     def __init__(self,X0,dt,ax,id = 0, mode = 'ego', target = 0, color='r',alpha = 0.8, palpha=1.0,plot=True, nominal_plot=True, num_constraints = 0, num_robots = 1):
         '''
@@ -57,22 +57,26 @@ class Unicycle2D:
         self.trust = np.zeros((1,num_robots))
         
     def f(self):
-        return np.array([0,0,0,0]).reshape(-1,1)
+        theta = self.X[4,0]
+        return np.array([self.X[3,0]*np.cos(theta),self.X[3,0]*np.sin(theta),0,0,0]).reshape(-1,1)
     
     def g(self):
-        return np.array([ [ np.cos(self.X[3,0]), 0],
-                          [ np.sin(self.X[3,0]), 0],
+        return np.array([ [ 0, 0],
                           [ 0, 0],
-                          [0, 1] ])  
+                          [ 0, 0],
+                          [ 1, 0],
+                          [ 0, 1] ])  
         
     def f_nominal(self):
-        return np.array([0,0,0,0]).reshape(-1,1)
+        theta = self.X_nominal[4,0]
+        return np.array([self.X_nominal[3,0]*np.cos(theta),self.X_nominal[3,0]*np.sin(theta),0,0,0]).reshape(-1,1)
     
     def g_nominal(self):
-        return np.array([ [ np.cos(self.X_nominal[3,0]), 0 ],
-                          [ np.sin(self.X_nominal[3,0]), 0],
+        return np.array([ [ 0, 0],
                           [ 0, 0],
-                          [0, 1] ])  
+                          [ 0, 0],
+                          [ 1, 0],
+                          [ 0, 1] ])  
         
     def Xdot(self):
         return self.f() + self.g() @ self.U     
