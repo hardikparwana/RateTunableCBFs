@@ -1,0 +1,24 @@
+version: "3"
+
+services:
+  project_cuda116:
+      build: .
+      privileged: true
+      tty: true
+      network_mode: "host"
+      volumes:
+        - /tmp/.X11-unix:/tmp/.X11-unix
+        - /home/hardik/Desktop/eecs587/parallel-computing-project/code:/home/code
+      environment:
+        - DISPLAY = $DISPLAY
+        - NVIDIA_VISIBLE_DEVICES=all
+        - NVIDIA_DRIVER_CAPABILITIES=all
+      runtime: nvidia  # not need maybe for display atleast
+      deploy:
+        resources:
+          reservations:
+            devices:
+              - driver: nvidia
+                count: 1
+                capabilities: [gpu]
+
