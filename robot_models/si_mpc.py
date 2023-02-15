@@ -38,6 +38,8 @@ class SI:
             
         self.Xs = np.copy(self.X)
         self.Us = np.copy(self.U)
+        self.Xs_nominal = np.copy(self.X_nominal)
+        # self.Us_nominal = np.copy(self.U_nominal)
         
         # to store constraints
         self.A = np.zeros((num_constraints,2))
@@ -79,6 +81,8 @@ class SI:
         self.U_nominal = U.reshape(-1,1)
         self.X_nominal = self.X_nominal + ( self.f_nominal() + self.g_nominal() @ self.U_nominal )*self.dt
         self.render_plot_nominal()
+        self.Xs_nominal = np.append(self.Xs_nominal,self.X_nominal,axis=1)
+        # self.Us_nominal = np.append(self.Us_nominal,self.U_nominal,axis=1)
         return self.X_nominal
     
     def render_plot(self):

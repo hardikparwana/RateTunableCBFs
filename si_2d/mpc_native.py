@@ -3,6 +3,9 @@ import cyipopt
 import matplotlib.pyplot as plt
 import time
 
+# from tempfile import TemporaryFile
+# outfile = TemporaryFile()
+
 dt = 0.05
 N = 50
 n = 2
@@ -196,6 +199,14 @@ circ2 = plt.Circle((obsX2[0],obsX2[1]),d_obs, linewidth = 1, edgecolor='k',facec
 ax.add_patch(circ2)
 ax.plot(Xs[0,1:], Xs[1,1:],'r')
 
+with open('si_2d/mpc_case1.npy', 'wb') as f:
+    np.save(f, Xs)
+    # np.save(f, np.array([1, 3]))
+
 # plt.figure()
 plt.show()
+
+
+
+
 
