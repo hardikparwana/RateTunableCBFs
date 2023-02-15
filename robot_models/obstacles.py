@@ -40,3 +40,20 @@ class circle:
         
     def Xdot(self):
         return np.array([0,0,0]).reshape(-1,1)
+    
+class circle2D:
+    
+    def __init__(self,x,y,radius,ax,id):
+        self.X = np.array([x,y]).reshape(-1,1)
+        self.radius = radius
+        self.id = id
+        self.type = 'circle'
+
+        self.render(ax)
+
+    def render(self,ax):
+        circ = plt.Circle((self.X[0],self.X[1]),self.radius,linewidth = 1, edgecolor='k',facecolor='k')
+        ax.add_patch(circ)
+        
+    def Xdot(self):
+        return np.array([0,0]).reshape(-1,1)
