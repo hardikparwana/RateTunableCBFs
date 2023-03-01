@@ -1,10 +1,11 @@
 import numpy as np
 from utils.utils import wrap_angle
 from trust_utils import *
+import matplotlib.patches as mpatches
 
 class Unicycle:
     
-    def __init__(self,X0,dt,ax,id = 0, mode = 'ego', target = 0, color='r',alpha = 0.8, palpha=1.0,plot=True, nominal_plot=True, num_constraints = 0, num_robots = 1):
+    def __init__(self,X0,dt,ax,id = 0, mode = 'ego', target = 0, color='r',alpha = 0.8, palpha=1.0,plot=True, nominal_plot=True, num_constraints = 0, num_robots = 1, plot_fov=True):
         '''
         X0: iniytial state
         dt: simulation time step
@@ -23,12 +24,18 @@ class Unicycle:
         self.id = id
         self.color = color
         self.palpha = palpha
+        self.min_D = 0.3
+        self.max_D = 2.0
+        self.FoV_angle = np.pi/3
+        self.FoV_length = self.max_D
+        
         
         self.U = np.array([0,0]).reshape(-1,1)
         
         # Plot handles
         self.plot = plot
         self.plot_nominal = nominal_plot
+        self.plot_fov = plot_fov
         if self.plot:
             self.body = ax.scatter([],[],alpha=palpha,s=60,facecolors=self.color,edgecolors=self.color) #facecolors='none'
             self.radii = 0.4
@@ -36,11 +43,22 @@ class Unicycle:
             if palpha==1:
                 self.axis = ax.plot([self.X[0,0],self.X[0,0]+self.radii*np.cos(self.X[2,0])],[self.X[1,0],self.X[1,0]+self.radii*np.sin(self.X[2,0])], color=self.color)
             self.render_plot()
+            
         if self.plot_nominal:
             self.body_nominal = ax.scatter([],[],alpha=0.3,s=60,facecolors=self.color,edgecolors=self.color) #facecolors='none'
             if palpha==1:
                 self.axis_nominal = ax.plot([self.X_nominal[0,0],self.X_nominal[0,0]+self.radii*np.cos(self.X_nominal[2,0])],[self.X_nominal[1,0],self.X_nominal[1,0]+self.radii*np.sin(self.X_nominal[2,0])], alpha = 0.3, color=self.color)
             self.render_plot_nominal()
+            
+        if self.plot_fov:     
+            self.lines, = ax.plot([],[],'o-')
+            self.poly = mpatches.Polygon([(0,0.2)], closed=True, color='r',alpha=0.1, linewidth=0) #[] is Nx2
+            self.fov_arc = ax.add_patch(self.poly)
+            self.areas, = ax.fill([],[],'r',alpha=0.1)
+            self.body = ax.scatter([],[],c=color,s=10)            
+            self.des_point = ax.scatter([],[],s=10, facecolors='none', edgecolors='r')
+            
+            self.render_plot_fov()
             
         self.Xs = np.copy(self.X)
         self.Us = np.copy(self.U)
@@ -79,7 +97,8 @@ class Unicycle:
         self.U = U.reshape(-1,1)
         self.X = self.X + ( self.f() + self.g() @ self.U )*self.dt
         self.X[2,0] = wrap_angle(self.X[2,0])
-        self.render_plot()
+        if self.plot:
+            self.render_plot()
         self.Xs = np.append(self.Xs,self.X,axis=1)
         self.Us = np.append(self.Us,self.U,axis=1)
         return self.X
@@ -108,6 +127,47 @@ class Unicycle:
             if self.palpha==1:
                 self.axis_nominal[0].set_ydata([self.X_nominal[1,0],self.X_nominal[1,0]+self.radii*np.sin(self.X_nominal[2,0])])
                 self.axis_nominal[0].set_xdata( [self.X_nominal[0,0],self.X_nominal[0,0]+self.radii*np.cos(self.X_nominal[2,0])] )
+    
+    def render_plot_fov(self): #,lines,areas,body, poly, des_point):
+        # length = 3
+        # FoV = np.pi/3   # 60 degrees
+
+        x = np.array([self.X[0,0],self.X[1,0]])
+  
+        theta = self.X[2][0]
+        theta1 = theta + self.FoV_angle/2
+        theta2 = theta - self.FoV_angle/2
+        e1 = np.array([np.cos(theta1),np.sin(theta1)])
+        e2 = np.array([np.cos(theta2),np.sin(theta2)])
+
+        P1 = x + self.FoV_length*e1
+        P2 = x + self.FoV_length*e2  
+
+        des_dist = self.min_D + (self.max_D - self.min_D)/2
+        des_x = np.array( [ self.X[0,0] + np.cos(theta)*des_dist, self.X[1,0] + np.sin(theta)*des_dist    ] )
+
+        triangle_hx = [x[0] , P1[0], P2[0], x[0] ]
+        triangle_hy = [x[1] , P1[1], P2[1], x[1] ]
+        
+        triangle_v = [ x,P1,P2,x ]  
+
+        # lines.set_data(triangle_hx,triangle_hy)
+        self.areas.set_xy(triangle_v)
+
+        # scatter plot update
+        self.body.set_offsets([x[0],x[1]])
+        self.des_point.set_offsets([des_x[0], des_x[1]])
+
+        #Fov arc
+        self.poly.set_xy(self.arc_points(x, self.FoV_length, theta2, theta1))
+        
+    def arc_points(self, center, radius, theta1, theta2, resolution=50):
+        # generate the points
+        theta = np.linspace(theta1, theta2, resolution)
+        points = np.vstack((radius*np.cos(theta) + center[0], 
+                            radius*np.sin(theta) + center[1]))
+        return points.T
+
     
     def lyapunov(self, G, type='none'):
         V = np.linalg.norm( self.X[0:2] - G[0:2] )**2

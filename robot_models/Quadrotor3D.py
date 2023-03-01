@@ -263,6 +263,6 @@ if 1:
 
     # plt.ion()
     for i in range(100):
-        robot.step(np.array([0.5*9.81,0.9,0.0,0.0]).reshape(-1,1))
+        robot.step(np.array([0.5*9.81,0.2,0.0,0.0]).reshape(-1,1))
         fig.canvas.draw()
         fig.canvas.flush_events()

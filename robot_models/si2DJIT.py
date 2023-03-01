@@ -19,6 +19,11 @@ def update_si_state_jit( state, control, dt ):
     return state + ( f + g @ control ) * dt
 traced_update_si_state_jit = torch.jit.trace( update_si_state_jit, ( torch.ones(2,1, dtype=torch.float), torch.ones(2,1, dtype=torch.float), torch.tensor(0.5, dtype=torch.float) ) )
 
+def SI_leader_motion(t):
+    u = torch.tensor([[2]], dtype=torch.float)
+    v = 3*torch.cos(5*t).reshape(-1,1)
+    return torch.cat( (u,v), dim=0 )
+
 # @torch.jit.script
 def si2D_lyapunov_jit(X, G, min_D = torch.tensor(0.3, dtype=torch.float), max_D = torch.tensor(2.0, dtype=torch.float)):   
     V = torch.square ( torch.norm( X[0:2] - G[0:2] ) )

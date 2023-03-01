@@ -7,12 +7,12 @@ import time
 from robot_models.obstacles import circle2D
 from utils.utils import *
 from robot_models.si2DJIT import *
-from robot_models.si_mpc import SI
+from robot_models.uav_2d import UAV_2d
 
 dt_inner = 0.05
 N = 100#100
 tf =  int( N * dt_inner ) #20
-outer_loop = 10
+outer_loop = 1
 num_gd_iterations = 5
 dt_outer = 0.1
 H = 10#100
@@ -155,7 +155,7 @@ def constrained_update( objective, maintain_constraints, improve_constraints, pa
 
 
 
-def simulate_scenario( movie_name = 'test.mp4', adapt = True, enforce_input_constraints = False, params = [1.0, 0.8, 0.8], plot_x_lim = (-5,5), plot_y_lim = (-5,5), offline = False, offline_iterations = 20 ):
+def simulate_scenario( movie_name = 'test.mp4', adapt = True, enforce_input_constraints = False, params = [1.0, 0.8, 0.8], plot_x_lim = (-5,5), plot_y_lim = (-5,5), offline = False, offline_iterations = 20, alpha1 = 0.8, alpha2 = 0.8 ):
 
     t = 0
     
@@ -166,7 +166,7 @@ def simulate_scenario( movie_name = 'test.mp4', adapt = True, enforce_input_cons
     ax.set_ylabel("Y")
     ax.set_aspect(1)
     
-    robot = SI( X_init, dt_inner, ax )
+    robot = UAV_2d( X_init, dt_inner, ax, alpha1 = alpha1, alpha2 = alpha2 )
     global obs1X, obs2X
     obs1 = circle2D(obs1X[0], obs1X[1], d_obs,ax,0)
     obs2 = circle2D(obs2X[0], obs2X[1], d_obs,ax,1)#1.5, 1.9
@@ -264,89 +264,45 @@ def simulate_scenario( movie_name = 'test.mp4', adapt = True, enforce_input_cons
             
 # Run simulations
 fig1, ax1, robot1, rewards1, params1 = simulate_scenario( movie_name = 'si_2d/figures/cs4_case1_rc.mp4', adapt=True, enforce_input_constraints=True, params = [1.0, 3.0, 3.0], plot_x_lim = plot_x_lim, plot_y_lim = plot_y_lim, offline = False, offline_iterations=20 )            
-fig2, ax2, robot2, rewards2, params2 = simulate_scenario( movie_name = 'si_2d/figures/cs4_case2_rc.mp4', adapt=True, enforce_input_constraints=True, params = [0.5, 0.5, 0.5], plot_x_lim = plot_x_lim, plot_y_lim = plot_y_lim, offline = False, offline_iterations=20 )            
-fig3, ax3, robot3, rewards3, params3 = simulate_scenario( movie_name = 'si_2d/figures/cs4_case1_offline.mp4', adapt=True, enforce_input_constraints=True, params = [1.0, 3.0, 3.0], plot_x_lim = plot_x_lim, plot_y_lim = plot_y_lim, offline = True, offline_iterations=20 )            
-fig4, ax4, robot4, rewards4, params4 = simulate_scenario( movie_name = 'si_2d/figures/cs4_case2_offline.mp4', adapt=True, enforce_input_constraints=True, params = [0.5, 0.5, 0.5], plot_x_lim = plot_x_lim, plot_y_lim = plot_y_lim, offline = True, offline_iterations=20 )
+# fig2, ax2, robot2, rewards2, params2 = simulate_scenario( movie_name = 'si_2d/figures/cs4_case2_rc.mp4', adapt=True, enforce_input_constraints=True, params = [0.5, 0.5, 0.5], plot_x_lim = plot_x_lim, plot_y_lim = plot_y_lim, offline = False, offline_iterations=20 )            
+# fig3, ax3, robot3, rewards3, params3 = simulate_scenario( movie_name = 'si_2d/figures/cs4_case1_offline.mp4', adapt=True, enforce_input_constraints=True, params = [1.0, 3.0, 3.0], plot_x_lim = plot_x_lim, plot_y_lim = plot_y_lim, offline = True, offline_iterations=20 )            
+# fig4, ax4, robot4, rewards4, params4 = simulate_scenario( movie_name = 'si_2d/figures/cs4_case2_offline.mp4', adapt=True, enforce_input_constraints=True, params = [0.5, 0.5, 0.5], plot_x_lim = plot_x_lim, plot_y_lim = plot_y_lim, offline = True, offline_iterations=20 )
 
-plt.ioff()
+# plt.ioff()
 
-with open('si_2d/mpc_case1.npy', 'rb') as f:
-    Xs = np.load(f)
+# with open('si_2d/mpc_case1.npy', 'rb') as f:
+#     Xs = np.load(f)
     
-fig, ax = plt.subplots(1,1)
-ax.set_xlim( plot_x_lim )
-ax.set_ylim( plot_y_lim )
+# fig, ax = plt.subplots(1,1)
+# ax.set_xlim( plot_x_lim )
+# ax.set_ylim( plot_y_lim )
 
-# Plot obstacles
-circ = plt.Circle((obs1X[0],obs1X[1]),d_obs, linewidth = 1, edgecolor='k',facecolor='k')
-ax.add_patch(circ)
-circ2 = plt.Circle((obs2X[0],obs2X[1]),d_obs, linewidth = 1, edgecolor='k',facecolor='k')
-ax.add_patch(circ2)
+# # Plot obstacles
+# circ = plt.Circle((obs1X[0],obs1X[1]),d_obs, linewidth = 1, edgecolor='k',facecolor='k')
+# ax.add_patch(circ)
+# circ2 = plt.Circle((obs2X[0],obs2X[1]),d_obs, linewidth = 1, edgecolor='k',facecolor='k')
+# ax.add_patch(circ2)
 
-# Plot MPC solution
-ax.plot(Xs[0,1:], Xs[1,1:],'r', label='MPC')
+# # Plot MPC solution
+# ax.plot(Xs[0,1:], Xs[1,1:],'r', label='MPC')
 
-# Plot new solution
+# # Plot new solution
 
-# Case 1
-ax.plot(robot1.Xs_nominal[0,:], robot1.Xs_nominal[1,:], 'g', label='Nominal Case 1')
-ax.plot(robot1.Xs[0,:], robot1.Xs[1,:], 'g.', label='RC Case 1')
-ax.plot(robot3.Xs[0,:], robot3.Xs[1,:], 'g-.', label='Fixed tuned Case 1')
+# # Case 1
+# ax.plot(robot1.Xs_nominal[0,:], robot1.Xs_nominal[1,:], 'g', label='Nominal Case 1')
+# ax.plot(robot1.Xs[0,:], robot1.Xs[1,:], 'g.', label='RC Case 1')
+# ax.plot(robot3.Xs[0,:], robot3.Xs[1,:], 'g-.', label='Fixed tuned Case 1')
 
-# Case 2
-ax.plot(robot2.Xs_nominal[0,:], robot2.Xs_nominal[1,:], 'b', label='Nominal Case 2')
-ax.plot(robot2.Xs[0,:], robot2.Xs[1,:], 'b.', label='RC Case 2')
-ax.plot(robot4.Xs[0,:], robot4.Xs[1,:], 'b-.', label='Fixed tuned Case 2')
-
-
-
-# Show plot
-ax.legend()
-fig.savefig("si_2d/figures/cs4.png")
-plt.show()
+# # Case 2
+# ax.plot(robot2.Xs_nominal[0,:], robot2.Xs_nominal[1,:], 'b', label='Nominal Case 2')
+# ax.plot(robot2.Xs[0,:], robot2.Xs[1,:], 'b.', label='RC Case 2')
+# ax.plot(robot4.Xs[0,:], robot4.Xs[1,:], 'b-.', label='Fixed tuned Case 2')
 
 
 
-# First png
-# dt_inner = 0.05
-# N = 100#100
-# tf =  int( N * dt_inner ) #20
-# outer_loop = 10
-# num_gd_iterations = 5
-# dt_outer = 0.1
-# H = 10#100
-# lr_alpha = 0.1#0.05
-# plot_x_lim = (-1.3,2.5)  
-# plot_y_lim = (-0.5,3) 
-# fig1, ax1, robot1, rewards1, params1 = simulate_scenario( movie_name = 'test.mp4', adapt=True, enforce_input_constraints=True, params = [1.0, 3.0, 3.0], plot_x_lim = plot_x_lim, plot_y_lim = plot_y_lim, offline = False, offline_iterations=20 )            
-# fig2, ax2, robot2, rewards2, params2 = simulate_scenario( movie_name = 'test1.mp4', adapt=True, enforce_input_constraints=True, params = [0.5, 0.5, 0.5], plot_x_lim = plot_x_lim, plot_y_lim = plot_y_lim, offline = False, offline_iterations=20 )            
-# fig3, ax3, robot3, rewards3, params3 = simulate_scenario( movie_name = 'test2.mp4', adapt=True, enforce_input_constraints=True, params = [1.0, 3.0, 3.0], plot_x_lim = plot_x_lim, plot_y_lim = plot_y_lim, offline = True, offline_iterations=20 )            
-# fig4, ax4, robot4, rewards4, params4 = simulate_scenario( movie_name = 'test2.mp4', adapt=True, enforce_input_constraints=True, params = [0.5, 0.5, 0.5], plot_x_lim = plot_x_lim, plot_y_lim = plot_y_lim, offline = True, offline_iterations=20 )
+# # Show plot
+# ax.legend()
+# fig.savefig("si_2d/figures/cs4.png")
+# plt.show()
 
-# CS2
-# dt_inner = 0.05
-# N = 100#100
-# tf =  int( N * dt_inner ) #20
-# outer_loop = 5
-# num_gd_iterations = 5
-# dt_outer = 0.1
-# H = 100#100
-# lr_alpha = 0.05#0.05
-# plot_x_lim = (-1.3,2.5)  
-# plot_y_lim = (-0.5,3) 
-# fig1, ax1, robot1, rewards1, params1 = simulate_scenario( movie_name = 'si_2d/figures/cs2_case1_rc.mp4', adapt=True, enforce_input_constraints=True, params = [1.0, 3.0, 3.0], plot_x_lim = plot_x_lim, plot_y_lim = plot_y_lim, offline = False, offline_iterations=20 )            
-# fig2, ax2, robot2, rewards2, params2 = simulate_scenario( movie_name = 'si_2d/figures/cs2_case2_rc.mp4', adapt=True, enforce_input_constraints=True, params = [0.5, 0.5, 0.5], plot_x_lim = plot_x_lim, plot_y_lim = plot_y_lim, offline = False, offline_iterations=20 )            
-# fig3, ax3, robot3, rewards3, params3 = simulate_scenario( movie_name = 'si_2d/figures/cs2_case1_offline.mp4', adapt=True, enforce_input_constraints=True, params = [1.0, 3.0, 3.0], plot_x_lim = plot_x_lim, plot_y_lim = plot_y_lim, offline = True, offline_iterations=20 )            
-# fig4, ax4, robot4, rewards4, params4 = simulate_scenario( movie_name = 'si_2d/figures/cs2_case2_offline.mp4', adapt=True, enforce_input_constraints=True, params = [0.5, 0.5, 0.5], plot_x_lim = plot_x_lim, plot_y_lim = plot_y_lim, offline = True, offline_iterations=20 )
 
-#CS3
-# dt_inner = 0.05
-# N = 100#100
-# tf =  int( N * dt_inner ) #20
-# outer_loop = 2
-# num_gd_iterations = 1
-# dt_outer = 0.05
-# H = 100#100
-# lr_alpha = 0.1#0.05
-# plot_x_lim = (-1.3,2.5)  
-# plot_y_lim = (-0.5,3) 
