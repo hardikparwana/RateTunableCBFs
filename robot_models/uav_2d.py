@@ -175,8 +175,8 @@ class UAV_2d:
         
     def lyapunov(self, G):
         
-        c1 = 1.0
-        c2 = 1.0
+        c1 = 5.0
+        c2 = 5.0
         
         # V = 20 * np.linalg.norm( self.X[0:2] - G[0:2] )**2 + np.linalg.norm( self.X[3:5] )**2
         # dV_dxi = 20* np.append( 2*( self.X[0:2] - G[0:2] ).T, [[0, 0, 0, 0, 0]] , axis = 1 ) + np.array([[ 0, 0, 0, 2*self.X[3,0], 2*self.X[4,0], 0, 0 ]])
@@ -195,17 +195,16 @@ class UAV_2d:
         
         theta_g = np.arctan2( G[1,0]-yi, G[0,0]-xi )
         dtheta_g_dx = np.cos(theta_g)**2 * np.array([[ (G[1,0]-yi)/(G[0,0]-xi)**2, -1/(G[0,0]-xi), 0, 0, 0, 0, 0 ]])
-            
         
-            
+        # tau_d = 
+                
         Xdi = np.array( [ G[0,0], G[1,0], theta_g, c1*np.linalg.norm( G[0:2]-self.X[0:2] ) * np.cos(theta_g-self.X[2,0]), c1 * np.linalg.norm( G[0:2]-self.X[0:2] ) * np.sin(theta_g-self.X[2,0]), c2 * (theta_g-self.X[2,0]), 0 ] ).reshape(-1,1) #c3 * ( c1*dist * np.cos(G[2,0]-self.X[2,0]) - self.X[3,0] ) ] ).reshape(-1,1)
         # Xdi = np.array( [ G[0,0], G[1,0], G[2,0], c1*np.linalg.norm( G[0:2]-self.X[0:2] ) * np.cos(G[2,0]-self.X[2,0]), c1 * np.linalg.norm( G[0:2]-self.X[0:2] ) * np.sin(G[2,0]-self.X[2,0]), c2 * (G[2,0]-self.X[2,0]), 0 ] ).reshape(-1,1) #c3 * ( c1*dist * np.cos(G[2,0]-self.X[2,0]) - self.X[3,0] ) ] ).reshape(-1,1)
         
         V = np.linalg.norm(self.X-Xdi)**2     
         
-        
-        dV_dx = np.array([[  2*(self.X[0,0]-Xdi[0,0]) + 2*(phi-theta_g)*( -dtheta_g_dx[0,0] ) + 2*( ui-c1*dist*np.cos(theta_g-phi) )/2/dist*2*(self.X[0,0]-xi) +  2*( ui-c1*dist*np.cos(theta_g-phi) )*( -np.sin(theta_g-phi)*dtheta_g_dx[0,0] )  + 2*( vi-c1*dist*np.sin(theta_g-phi) )/2/dist*2*(self.X[0,0]-xi) + 2*( vi-c1*dist*np.sin(theta_g-phi) )*( np.cos(theta_g-phi)*dtheta_g_dx[0,0] ) + 2*(ri-c2*(theta_g-phi))*c2*dtheta_g_dx[0,0] , 
-                             2*(self.X[1,0]-Xdi[1,0]) + 2*(phi-theta_g)*( -dtheta_g_dx[0,1] ) + 2*( ui-c1*dist*np.cos(theta_g-phi) )/2/dist*2*(self.X[1,0]-yi) +  2*( ui-c1*dist*np.cos(theta_g-phi) )*( -np.sin(theta_g-phi)*dtheta_g_dx[0,1] )  + 2*( vi-c1*dist*np.sin(theta_g-phi) )/2/dist*2*(self.X[1,0]-yi) + 2*( vi-c1*dist*np.sin(theta_g-phi) )*( np.cos(theta_g-phi)*dtheta_g_dx[0,1] ) + 2*(ri-c2*(theta_g-phi))*c2*dtheta_g_dx[0,1] ,
+        dV_dx = np.array([[  2*(self.X[0,0]-Xdi[0,0]) + 2*(phi-theta_g)*( -dtheta_g_dx[0,0] ) + 2*( ui-c1*dist*np.cos(theta_g-phi) )*(c1*np.cos(theta_g-phi)/2/dist*2*(self.X[0,0]-xi)) +  2*( ui-c1*dist*np.cos(theta_g-phi) )*( c1*dist*np.sin(theta_g-phi)*dtheta_g_dx[0,0] )  + 2*( vi-c1*dist*np.sin(theta_g-phi) )*(c1*np.sin(theta_g-phi)/2/dist*2*(self.X[0,0]-xi)) + 2*( vi-c1*dist*np.sin(theta_g-phi) )*( -c1*dist*np.cos(theta_g-phi)*dtheta_g_dx[0,0] ) + 2*(ri-c2*(theta_g-phi))*(-c2*dtheta_g_dx[0,0]) , 
+                             2*(self.X[1,0]-Xdi[1,0]) + 2*(phi-theta_g)*( -dtheta_g_dx[0,1] ) + 2*( ui-c1*dist*np.cos(theta_g-phi) )*(c1*np.cos(theta_g-phi)/2/dist*2*(self.X[1,0]-yi)) +  2*( ui-c1*dist*np.cos(theta_g-phi) )*( c1*dist*np.sin(theta_g-phi)*dtheta_g_dx[0,1] )  + 2*( vi-c1*dist*np.sin(theta_g-phi) )*(c1*np.sin(theta_g-phi)/2/dist*2*(self.X[1,0]-yi)) + 2*( vi-c1*dist*np.sin(theta_g-phi) )*( -c1*dist*np.cos(theta_g-phi)*dtheta_g_dx[0,1] ) + 2*(ri-c2*(theta_g-phi))*(-c2*dtheta_g_dx[0,1]) ,
                              2*( phi-theta_g ) + 2*( ui-c1*dist*np.cos(theta_g-phi) )*( -c1*dist*(np.sin(theta_g-phi)) ) + 2*( vi-c1*dist*np.sin(theta_g-phi) )*( -c1*dist*(-np.cos(theta_g-phi)) ) + 2*( ri-c2*(theta_g-phi) )*( c2 ),
                              2*( ui-c1*dist*np.cos(theta_g-phi) ),
                              2*( vi-c1*dist*np.sin(theta_g-phi) ),
@@ -321,7 +320,7 @@ if 1:
     ax.set_ylabel("Y")
     ax.set_aspect(1)
     
-    dt = 0.01
+    dt = 0.05
     tf = 20
     num_steps = int(tf/dt)
     alpha3 = 0.8
@@ -330,6 +329,8 @@ if 1:
     targetX = np.array([1, 1]).reshape(-1,1)
     d_min = 0.3
     obs1 = circle2D(obsX[0], obsX[1], d_min, ax, 0)
+    
+    ax.scatter(targetX[0,0], targetX[1,0],c='g')
     
     num_constraints = 2
     u = cp.Variable((2,1))
@@ -348,7 +349,7 @@ if 1:
         
         h3, dh3_dx = robot.agent_barrier( obs1, d_min )
         V, dV_dx = robot.lyapunov( targetX )
-        print(f"V:{V}, dV_dx:{dV_dx}")
+        # print(f"V:{V}, dV_dx:{dV_dx}")
         A1.value[0,:] = 1.0*(-dV_dx @ robot.g())
         A1.value[1,:] = 0.0*(dh3_dx @ robot.g())
         b1.value[0,:] = 1.0*(-dV_dx @ robot.f() - 1.0 * V )
