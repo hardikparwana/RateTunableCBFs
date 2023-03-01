@@ -177,6 +177,19 @@ class UAV_2d:
         
         c1 = 5.0
         c2 = 5.0
+        c3 = 1.0
+        
+        V_w = 0.1
+        theta_w = np.pi/3
+        m11 = 5.5404
+        m22 = 9.6572
+        m33 = 0.0574
+        X_u = -2.3015
+        X_u_u = -8.2845
+        Y_v = -8.0149
+        Y_v_v = -23.689
+        N_r = -0.0048
+        N_r_r = -0.0089
         
         # V = 20 * np.linalg.norm( self.X[0:2] - G[0:2] )**2 + np.linalg.norm( self.X[3:5] )**2
         # dV_dxi = 20* np.append( 2*( self.X[0:2] - G[0:2] ).T, [[0, 0, 0, 0, 0]] , axis = 1 ) + np.array([[ 0, 0, 0, 2*self.X[3,0], 2*self.X[4,0], 0, 0 ]])
@@ -197,19 +210,26 @@ class UAV_2d:
         dtheta_g_dx = np.cos(theta_g)**2 * np.array([[ (G[1,0]-yi)/(G[0,0]-xi)**2, -1/(G[0,0]-xi), 0, 0, 0, 0, 0 ]])
         
         # tau_d = 
-                
+        
+        u_di = c1*dist*np.cos(theta_g-phi)
+        
+        fu = m22*self.X[4,0]*self.X[5,0]+X_u*self.X[3,0]+X_u_u*np.abs(self.X[3,0])*self.X[3,0]
+        dfu_dx = np.array([[ 0, 0, 0, (X_u + X_u_u*2*self.X[3,0]*np.sign(self.X[3,0])), m22*self.X[5,0], m22*self.X[4,0], 0 ]])
+        tau_uid = -fu + c3*m11*( u_di - ui )
+        d_tau_uid_dx = -dfu_dx +  c3*m11*np.array([[ -c1*dist*np.sin(theta_g-phi)*dtheta_g_dx[0,0]+c1*np.cos(theta_g-phi)*(-1.0/dist*(G[0,0]-xi)), -c1*dist*np.sin(theta_g-phi)*dtheta_g_dx[0,1]+c1*np.cos(theta_g-phi)*(-1.0/dist*(G[1,0]-yi)), -c1*dist*np.sin(theta_g-phi), -1, 0, 0, 0   ]])
+                       
         Xdi = np.array( [ G[0,0], G[1,0], theta_g, c1*np.linalg.norm( G[0:2]-self.X[0:2] ) * np.cos(theta_g-self.X[2,0]), c1 * np.linalg.norm( G[0:2]-self.X[0:2] ) * np.sin(theta_g-self.X[2,0]), c2 * (theta_g-self.X[2,0]), 0 ] ).reshape(-1,1) #c3 * ( c1*dist * np.cos(G[2,0]-self.X[2,0]) - self.X[3,0] ) ] ).reshape(-1,1)
         # Xdi = np.array( [ G[0,0], G[1,0], G[2,0], c1*np.linalg.norm( G[0:2]-self.X[0:2] ) * np.cos(G[2,0]-self.X[2,0]), c1 * np.linalg.norm( G[0:2]-self.X[0:2] ) * np.sin(G[2,0]-self.X[2,0]), c2 * (G[2,0]-self.X[2,0]), 0 ] ).reshape(-1,1) #c3 * ( c1*dist * np.cos(G[2,0]-self.X[2,0]) - self.X[3,0] ) ] ).reshape(-1,1)
         
         V = np.linalg.norm(self.X-Xdi)**2     
         
-        dV_dx = np.array([[  2*(self.X[0,0]-Xdi[0,0]) + 2*(phi-theta_g)*( -dtheta_g_dx[0,0] ) + 2*( ui-c1*dist*np.cos(theta_g-phi) )*(c1*np.cos(theta_g-phi)/2/dist*2*(self.X[0,0]-xi)) +  2*( ui-c1*dist*np.cos(theta_g-phi) )*( c1*dist*np.sin(theta_g-phi)*dtheta_g_dx[0,0] )  + 2*( vi-c1*dist*np.sin(theta_g-phi) )*(c1*np.sin(theta_g-phi)/2/dist*2*(self.X[0,0]-xi)) + 2*( vi-c1*dist*np.sin(theta_g-phi) )*( -c1*dist*np.cos(theta_g-phi)*dtheta_g_dx[0,0] ) + 2*(ri-c2*(theta_g-phi))*(-c2*dtheta_g_dx[0,0]) , 
-                             2*(self.X[1,0]-Xdi[1,0]) + 2*(phi-theta_g)*( -dtheta_g_dx[0,1] ) + 2*( ui-c1*dist*np.cos(theta_g-phi) )*(c1*np.cos(theta_g-phi)/2/dist*2*(self.X[1,0]-yi)) +  2*( ui-c1*dist*np.cos(theta_g-phi) )*( c1*dist*np.sin(theta_g-phi)*dtheta_g_dx[0,1] )  + 2*( vi-c1*dist*np.sin(theta_g-phi) )*(c1*np.sin(theta_g-phi)/2/dist*2*(self.X[1,0]-yi)) + 2*( vi-c1*dist*np.sin(theta_g-phi) )*( -c1*dist*np.cos(theta_g-phi)*dtheta_g_dx[0,1] ) + 2*(ri-c2*(theta_g-phi))*(-c2*dtheta_g_dx[0,1]) ,
-                             2*( phi-theta_g ) + 2*( ui-c1*dist*np.cos(theta_g-phi) )*( -c1*dist*(np.sin(theta_g-phi)) ) + 2*( vi-c1*dist*np.sin(theta_g-phi) )*( -c1*dist*(-np.cos(theta_g-phi)) ) + 2*( ri-c2*(theta_g-phi) )*( c2 ),
-                             2*( ui-c1*dist*np.cos(theta_g-phi) ),
-                             2*( vi-c1*dist*np.sin(theta_g-phi) ),
-                             2*( ri-c2*(theta_g-phi) ),
-                             2*tau_ui  ]])    
+        dV_dx = np.array([[  2*(self.X[0,0]-Xdi[0,0]) + 2*(phi-theta_g)*( -dtheta_g_dx[0,0] ) + 2*( ui-c1*dist*np.cos(theta_g-phi) )*(c1*np.cos(theta_g-phi)/2/dist*2*(G[0,0]-xi)) +  2*( ui-c1*dist*np.cos(theta_g-phi) )*( c1*dist*np.sin(theta_g-phi)*dtheta_g_dx[0,0] )  + 2*( vi-c1*dist*np.sin(theta_g-phi) )*(c1*np.sin(theta_g-phi)/2/dist*2*(G[0,0]-xi)) + 2*( vi-c1*dist*np.sin(theta_g-phi) )*( -c1*dist*np.cos(theta_g-phi)*dtheta_g_dx[0,0] ) + 2*(ri-c2*(theta_g-phi))*(-c2*dtheta_g_dx[0,0]) + 2*(tau_ui-tau_uid)*(-d_tau_uid_dx[0,0]) , 
+                             2*(self.X[1,0]-Xdi[1,0]) + 2*(phi-theta_g)*( -dtheta_g_dx[0,1] ) + 2*( ui-c1*dist*np.cos(theta_g-phi) )*(c1*np.cos(theta_g-phi)/2/dist*2*(G[1,0]-yi)) +  2*( ui-c1*dist*np.cos(theta_g-phi) )*( c1*dist*np.sin(theta_g-phi)*dtheta_g_dx[0,1] )  + 2*( vi-c1*dist*np.sin(theta_g-phi) )*(c1*np.sin(theta_g-phi)/2/dist*2*(G[1,0]-yi)) + 2*( vi-c1*dist*np.sin(theta_g-phi) )*( -c1*dist*np.cos(theta_g-phi)*dtheta_g_dx[0,1] ) + 2*(ri-c2*(theta_g-phi))*(-c2*dtheta_g_dx[0,1]) + 2*(tau_ui-tau_uid)*(-d_tau_uid_dx[0,1]),
+                             2*( phi-theta_g ) + 2*( ui-c1*dist*np.cos(theta_g-phi) )*( -c1*dist*(np.sin(theta_g-phi)) ) + 2*( vi-c1*dist*np.sin(theta_g-phi) )*( -c1*dist*(-np.cos(theta_g-phi)) ) + 2*( ri-c2*(theta_g-phi) )*( c2 ) + 2*(tau_ui-tau_uid)*(-d_tau_uid_dx[0,2]),
+                             2*( ui-c1*dist*np.cos(theta_g-phi) ) + 2*(tau_ui-tau_uid)*(-d_tau_uid_dx[0,3]),
+                             2*( vi-c1*dist*np.sin(theta_g-phi) ) + 2*(tau_ui-tau_uid)*(-d_tau_uid_dx[0,4]),
+                             2*( ri-c2*(theta_g-phi) ) + 2*(tau_ui-tau_uid)*(-d_tau_uid_dx[0,5]),
+                             2*(tau_ui-tau_uid) + 2*(tau_ui-tau_uid)*(-d_tau_uid_dx[0,6])  ]])    
         
         # dV_dx = np.array([[  2*(self.X[0,0]-Xdi[0,0]) + 2*( ui-c1*dist*np.cos(G[2,0]-phi) )/2/dist*2*(self.X[0,0]-xi) + 2*( vi-c1*dist*np.sin(G[2,0]-phi) )/2/dist*2*(self.X[0,0]-xi)  , 
         #                      2*(self.X[1,0]-Xdi[1,0]) + 2*( ui-c1*dist*np.cos(G[2,0]-phi) )/2/dist*2*(self.X[1,0]-yi) + 2*( vi-c1*dist*np.sin(G[2,0]-phi) )/2/dist*2*(self.X[1,0]-yi),
