@@ -212,11 +212,11 @@ def simulate_scenario( movie_name = 'test.mp4', adapt = True, enforce_input_cons
                 
                 
                 # Nominal robot
-                # robot.X_nominal_torch = torch.tensor(robot.X_nominal, dtype=torch.float)
-                # control_ref = torch.tensor([0,0], dtype=torch.float).reshape(-1,1)
-                # A, b = traced_uav2D_qp_constraints_jit( robot.X_nominal_torch, robot.goal_torch, obs1.X_torch, obs2.X_torch, torch.tensor(params_copy[0], dtype=torch.float), torch.tensor(params_copy[1], dtype=torch.float), torch.tensor(params_copy[2], dtype=torch.float), torch.tensor(params_copy[3], dtype=torch.float) )
-                # control, deltas = cbf_controller_layer( control_ref, A, b )            
-                # robot.step_nominal( control.detach().numpy() )
+                robot.X_nominal_torch = torch.tensor(robot.X_nominal, dtype=torch.float)
+                control_ref = torch.tensor([0,0], dtype=torch.float).reshape(-1,1)
+                A, b = traced_uav2D_qp_constraints_jit( robot.X_nominal_torch, robot.goal_torch, obs1.X_torch, obs2.X_torch, torch.tensor(params_copy[0], dtype=torch.float), torch.tensor(params_copy[1], dtype=torch.float), torch.tensor(params_copy[2], dtype=torch.float), torch.tensor(params_copy[3], dtype=torch.float) )
+                control, deltas = cbf_controller_layer( control_ref, A, b )            
+                robot.step_nominal( control.detach().numpy() )
                 
                 fig.canvas.draw()
                 fig.canvas.flush_events()
@@ -231,7 +231,7 @@ def simulate_scenario( movie_name = 'test.mp4', adapt = True, enforce_input_cons
                 if (not offline): 
                 
                     for k in range(num_gd_iterations):
-                        # print(f"k:{k}")    
+                        print(f"k:{k}")    
                         success = False                    
                         while not success:            
                             reward, improve_constraints, maintain_constraints, success = compute_reward(robot, obs1, obs2, robot.params, torch.tensor(dt_outer, dtype=torch.float))
@@ -247,7 +247,7 @@ def simulate_scenario( movie_name = 'test.mp4', adapt = True, enforce_input_cons
                 else:
                     
                     for k in range( offline_iterations ):        
-                        # print(f"k:{k}")            
+                        print(f"k:{k}")            
                         success = False                    
                         while not success:            
                             reward, improve_constraints, maintain_constraints, success = compute_reward(robot, obs1, obs2, robot.params, torch.tensor(dt_outer, dtype=torch.float))
