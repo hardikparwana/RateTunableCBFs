@@ -201,15 +201,15 @@ def uav2D_qp_constraints_jit(state, goal, obs1, obs2, param0, param1, param2, pa
     
     V, dV_dx = uav2D_lyapunov_jit( state, goal )
     h1, dh1_dx = uav_SI2D_barrier_jit( state, obs1, param1, param2  )
-    # h2, dh2_dx = uav_SI2D_barrier_jit( state, obs2, param1, param2  )
+    h2, dh2_dx = uav_SI2D_barrier_jit( state, obs2, param1, param2  )
     f = uav_f_torch_jit(state)
     g = uav_g_torch_jit(state)
     A0 = -dV_dx @ g; b0 = -dV_dx @ f - param0 * V
     A1 = dh1_dx @ g; b1 = dh1_dx @ f + param1 * h1
-    # A2 = dh2_dx @ g; b2 = dh2_dx @ f + param2 * h2        
-    # A = torch.cat( (A0, A1, A2), dim=0 )
-    # b = torch.cat( (b0, b1, b2), dim=0 )
-    A = torch.cat( (A0, A1), dim=0 )
-    b = torch.cat( (b0, b1), dim=0 )
+    A2 = dh2_dx @ g; b2 = dh2_dx @ f + param2 * h2        
+    A = torch.cat( (A0, A1, A2), dim=0 )
+    b = torch.cat( (b0, b1, b2), dim=0 )
+    # A = torch.cat( (A0, A1), dim=0 )
+    # b = torch.cat( (b0, b1), dim=0 )
     return A, b
 traced_uav2D_qp_constraints_jit = torch.jit.trace( uav2D_qp_constraints_jit, ( torch.ones(7,1, dtype=torch.float), torch.zeros(2,1, dtype=torch.float), torch.ones(2,1, dtype=torch.float), torch.ones(2,1, dtype=torch.float), torch.tensor(0.5, dtype=torch.float), torch.tensor(0.5, dtype=torch.float), torch.tensor(0.5, dtype=torch.float), torch.tensor(0.5, dtype=torch.float) ) )

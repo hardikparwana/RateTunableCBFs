@@ -38,7 +38,7 @@ u2_max = 10
 ##  Define Controller ################
 
 # si
-num_constraints = 2
+num_constraints = 3
 u = cp.Variable((2,1))
 u_ref = cp.Parameter((2,1), value = np.zeros((2,1)))
 A1 = cp.Parameter((num_constraints,2), value = np.zeros((num_constraints,2)))
@@ -187,7 +187,7 @@ def simulate_scenario( movie_name = 'test.mp4', adapt = True, enforce_input_cons
     with writer.saving(fig, movie_name, 100): 
 
         while (t < tf):
-            # print(f"t:{t}")
+            print(f"t:{t}")
 
             i = i + 1
             
@@ -212,11 +212,11 @@ def simulate_scenario( movie_name = 'test.mp4', adapt = True, enforce_input_cons
                 
                 
                 # Nominal robot
-                robot.X_nominal_torch = torch.tensor(robot.X_nominal, dtype=torch.float)
-                control_ref = torch.tensor([0,0], dtype=torch.float).reshape(-1,1)
-                A, b = traced_uav2D_qp_constraints_jit( robot.X_nominal_torch, robot.goal_torch, obs1.X_torch, obs2.X_torch, torch.tensor(params_copy[0], dtype=torch.float), torch.tensor(params_copy[1], dtype=torch.float), torch.tensor(params_copy[2], dtype=torch.float), torch.tensor(params_copy[3], dtype=torch.float) )
-                control, deltas = cbf_controller_layer( control_ref, A, b )            
-                robot.step_nominal( control.detach().numpy() )
+                # robot.X_nominal_torch = torch.tensor(robot.X_nominal, dtype=torch.float)
+                # control_ref = torch.tensor([0,0], dtype=torch.float).reshape(-1,1)
+                # A, b = traced_uav2D_qp_constraints_jit( robot.X_nominal_torch, robot.goal_torch, obs1.X_torch, obs2.X_torch, torch.tensor(params_copy[0], dtype=torch.float), torch.tensor(params_copy[1], dtype=torch.float), torch.tensor(params_copy[2], dtype=torch.float), torch.tensor(params_copy[3], dtype=torch.float) )
+                # control, deltas = cbf_controller_layer( control_ref, A, b )            
+                # robot.step_nominal( control.detach().numpy() )
                 
                 fig.canvas.draw()
                 fig.canvas.flush_events()
