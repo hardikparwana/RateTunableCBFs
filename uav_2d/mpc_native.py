@@ -6,8 +6,8 @@ import time
 # from tempfile import TemporaryFile
 # outfile = TemporaryFile()
 
-dt = 0.05
-N = 150#200#50
+dt = 0.04
+N = 200#200#50
 n = 6
 m = 2
 # starting point
@@ -130,8 +130,8 @@ class mpc():
         # input bounds (N-1)*m
         for i in range(N-1):
             ui = x[(n+m)*i+n:(n+m)*i+n+m]
-            cons = np.append( cons, 5 - ui[0]**2 )
-            cons = np.append( cons, 5 - ui[1]**2 )
+            cons = np.append( cons, 10 - ui[0]**2 )
+            cons = np.append( cons, 10 - ui[1]**2 )
             
         # state constraints: obstacle at obsX
         for i in range(N): # 2*N constraints

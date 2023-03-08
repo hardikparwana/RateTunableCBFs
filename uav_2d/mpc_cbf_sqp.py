@@ -6,37 +6,39 @@ from matplotlib.animation import FFMpegWriter
 import time
 from robot_models.obstacles import circle2D
 from utils.utils import *
-from robot_models.si2DJIT import *
+from robot_models.uav2DJIT import *
 from robot_models.uav_2d import UAV_2d
 
-dt_inner = 0.05
-N = 100#100
-tf =  int( N * dt_inner ) #20
-outer_loop = 1
+dt_inner = 0.01
+tf = 30
+# N = int( tf/dt_inner )
+# N = 100#100
+# tf =  int( N * dt_inner ) #20
+outer_loop = 2
 num_gd_iterations = 5
-dt_outer = 0.1
-H = 10#100
+dt_outer = 0.05
+H = 50#100
 lr_alpha = 0.1#0.05
 plot_x_lim = (-1.0,3.5)  
 plot_y_lim = (-0.8,3) 
 
 # starting point
 # X_init = np.array([-0.5,-0.5,np.pi/2])
-X_init = np.array([-0.5,-0.5])
+X_init = np.array([-0.5,-0.5, 0, 0.1, 0.1, 0, 0.1 ])
 d_obs = 0.3
 goalX = np.array([2.0,2.0])
 obs1X = [0.7, 0.7]
 obs2X = [1.5, 1.9]
 
 # input bounds
-u1_max = 2
-u2_max = 5
+u1_max = 10
+u2_max = 10
 
 
 ##  Define Controller ################
 
 # si
-num_constraints = 3
+num_constraints = 2
 u = cp.Variable((2,1))
 u_ref = cp.Parameter((2,1), value = np.zeros((2,1)))
 A1 = cp.Parameter((num_constraints,2), value = np.zeros((num_constraints,2)))
@@ -76,7 +78,7 @@ def compute_reward(robot, obs1, obs2, params, dt_outer):
 
         # make  control matrices
         control_ref = torch.tensor([0,0], dtype=torch.float).reshape(-1,1)
-        A, b = traced_si2D_qp_constraints_jit( states[i], robot.goal_torch, obs1.X_torch, obs2.X_torch, params[0], params[1], params[2] )
+        A, b = traced_uav2D_qp_constraints_jit( states[i], robot.goal_torch, obs1.X_torch, obs2.X_torch, params[0], params[1], params[2], params[3] )
         control, deltas = cbf_controller_layer( control_ref, A, b )
         
         # Check for constraints that need to be maintained or kept
@@ -90,11 +92,11 @@ def compute_reward(robot, obs1, obs2, params, dt_outer):
         #     maintain_constraints = torch.cat( (maintain_constraints, A @ control), dim=0 )
                    
         # Get next state
-        next_state = update_si_state_jit( states[i], control, dt_outer )
+        next_state = update_uav_state_jit( states[i], control, dt_outer )
                 
         # Save next state and compute reward
         states.append( next_state )
-        reward = reward + traced_si_compute_reward_jit( states[i+1], robot.goal_torch, control )       
+        reward = reward + traced_uav_compute_reward_jit( states[i+1], robot.goal_torch, control )       
         
     return reward, improve_constraints, maintain_constraints, True
 
@@ -185,6 +187,7 @@ def simulate_scenario( movie_name = 'test.mp4', adapt = True, enforce_input_cons
     with writer.saving(fig, movie_name, 100): 
 
         while (t < tf):
+            # print(f"t:{t}")
 
             i = i + 1
             
@@ -197,21 +200,21 @@ def simulate_scenario( movie_name = 'test.mp4', adapt = True, enforce_input_cons
             
                 # get controller
                 control_ref = torch.tensor([0,0], dtype=torch.float).reshape(-1,1)
-                A, b = si2D_qp_constraints_jit( robot.X_torch, robot.goal_torch, obs1.X_torch, obs2.X_torch, torch.tensor(params[0], dtype=torch.float), torch.tensor(params[1], dtype=torch.float), torch.tensor(params[2], dtype=torch.float) )
+                A, b = traced_uav2D_qp_constraints_jit( robot.X_torch, robot.goal_torch, obs1.X_torch, obs2.X_torch, torch.tensor(params[0], dtype=torch.float), torch.tensor(params[1], dtype=torch.float), torch.tensor(params[2], dtype=torch.float), torch.tensor(params[3], dtype=torch.float) )
                 control, deltas = cbf_controller_layer( control_ref, A, b )
                 
                 # print(f"control: {control.T}")
                 robot.step( control.detach().numpy() )
                 robot.render_plot()
                 
-                step_rewards.append( si_compute_reward_jit( torch.tensor(robot.X_torch, dtype=torch.float), robot.goal_torch, control ).item() )
+                step_rewards.append( traced_uav_compute_reward_jit( torch.tensor(robot.X_torch, dtype=torch.float), robot.goal_torch, control ).item() )
                 step_params = np.append( step_params, np.asarray(params).reshape(-1,1), axis=1 )
                 
                 
                 # Nominal robot
                 robot.X_nominal_torch = torch.tensor(robot.X_nominal, dtype=torch.float)
                 control_ref = torch.tensor([0,0], dtype=torch.float).reshape(-1,1)
-                A, b = si2D_qp_constraints_jit( robot.X_nominal_torch, robot.goal_torch, obs1.X_torch, obs2.X_torch, torch.tensor(params_copy[0], dtype=torch.float), torch.tensor(params_copy[1], dtype=torch.float), torch.tensor(params_copy[2], dtype=torch.float) )
+                A, b = traced_uav2D_qp_constraints_jit( robot.X_nominal_torch, robot.goal_torch, obs1.X_torch, obs2.X_torch, torch.tensor(params_copy[0], dtype=torch.float), torch.tensor(params_copy[1], dtype=torch.float), torch.tensor(params_copy[2], dtype=torch.float), torch.tensor(params_copy[3], dtype=torch.float) )
                 control, deltas = cbf_controller_layer( control_ref, A, b )            
                 robot.step_nominal( control.detach().numpy() )
                 
@@ -228,6 +231,7 @@ def simulate_scenario( movie_name = 'test.mp4', adapt = True, enforce_input_cons
                 if (not offline): 
                 
                     for k in range(num_gd_iterations):
+                        # print(f"k:{k}")    
                         success = False                    
                         while not success:            
                             reward, improve_constraints, maintain_constraints, success = compute_reward(robot, obs1, obs2, robot.params, torch.tensor(dt_outer, dtype=torch.float))
@@ -238,11 +242,12 @@ def simulate_scenario( movie_name = 'test.mp4', adapt = True, enforce_input_cons
                             params[0] = np.clip( params[0] + lr_alpha * grads[0], 0.0, None )
                             params[1] = np.clip( params[1] + lr_alpha * grads[1], 0.0, None )
                             params[2] = np.clip( params[2] + lr_alpha * grads[2], 0.0, None )
+                            params[3] = np.clip( params[3] + lr_alpha * grads[3], 0.0, None )
                             # print(f"grads: {grads.T}, params: {params}")
                 else:
                     
                     for k in range( offline_iterations ):        
-                        print(f"k:{k}")            
+                        # print(f"k:{k}")            
                         success = False                    
                         while not success:            
                             reward, improve_constraints, maintain_constraints, success = compute_reward(robot, obs1, obs2, robot.params, torch.tensor(dt_outer, dtype=torch.float))
@@ -253,6 +258,7 @@ def simulate_scenario( movie_name = 'test.mp4', adapt = True, enforce_input_cons
                             params[0] = np.clip( params[0] + lr_alpha * grads[0], 0.0, None )
                             params[1] = np.clip( params[1] + lr_alpha * grads[1], 0.0, None )
                             params[2] = np.clip( params[2] + lr_alpha * grads[2], 0.0, None )
+                            params[3] = np.clip( params[3] + lr_alpha * grads[3], 0.0, None )
                             # print(f"grads: {grads.T}, params: {params}")
                             
                     offline_done = True
@@ -263,7 +269,7 @@ def simulate_scenario( movie_name = 'test.mp4', adapt = True, enforce_input_cons
             
             
 # Run simulations
-fig1, ax1, robot1, rewards1, params1 = simulate_scenario( movie_name = 'si_2d/figures/cs4_case1_rc.mp4', adapt=True, enforce_input_constraints=True, params = [1.0, 3.0, 3.0], plot_x_lim = plot_x_lim, plot_y_lim = plot_y_lim, offline = False, offline_iterations=20 )            
+fig1, ax1, robot1, rewards1, params1 = simulate_scenario( movie_name = 'si_2d/figures/cs4_case1_rc.mp4', adapt=True, enforce_input_constraints=True, params = [1.0, 3.0, 3.0, 3.0], plot_x_lim = plot_x_lim, plot_y_lim = plot_y_lim, offline = False, offline_iterations=20 )            
 # fig2, ax2, robot2, rewards2, params2 = simulate_scenario( movie_name = 'si_2d/figures/cs4_case2_rc.mp4', adapt=True, enforce_input_constraints=True, params = [0.5, 0.5, 0.5], plot_x_lim = plot_x_lim, plot_y_lim = plot_y_lim, offline = False, offline_iterations=20 )            
 # fig3, ax3, robot3, rewards3, params3 = simulate_scenario( movie_name = 'si_2d/figures/cs4_case1_offline.mp4', adapt=True, enforce_input_constraints=True, params = [1.0, 3.0, 3.0], plot_x_lim = plot_x_lim, plot_y_lim = plot_y_lim, offline = True, offline_iterations=20 )            
 # fig4, ax4, robot4, rewards4, params4 = simulate_scenario( movie_name = 'si_2d/figures/cs4_case2_offline.mp4', adapt=True, enforce_input_constraints=True, params = [0.5, 0.5, 0.5], plot_x_lim = plot_x_lim, plot_y_lim = plot_y_lim, offline = True, offline_iterations=20 )

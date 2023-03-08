@@ -127,6 +127,17 @@ class UAV_2d:
                        0 ] ).reshape(-1,1)
     
     def g_nominal(self):
+        V_w = 0.1
+        theta_w = np.pi/3
+        m11 = 5.5404
+        m22 = 9.6572
+        m33 = 0.0574
+        X_u = -2.3015
+        X_u_u = -8.2845
+        Y_v = -8.0149
+        Y_v_v = -23.689
+        N_r = -0.0048
+        N_r_r = -0.0089
         return np.array([ [ 0, 0 ],
                           [ 0, 0 ],
                           [ 0, 0 ],
@@ -332,7 +343,7 @@ class UAV_2d:
         return h3, dh3_dx
 
 
-if 1:
+if 0:
     plt.ion()
     fig = plt.figure()
     ax = plt.axes( xlim = (-2,2), ylim = (-2,2) )
@@ -340,15 +351,17 @@ if 1:
     ax.set_ylabel("Y")
     ax.set_aspect(1)
     
-    dt = 0.05
+    dt = 0.01
     tf = 20
     num_steps = int(tf/dt)
     alpha3 = 0.8
     robot = UAV_2d( np.array([0,0,0,0.1,0.1,0,0.1]).reshape(-1,1), dt, ax, alpha1 = 2.0, alpha2 = 2.0 )
     obsX = [0.5, 0.5]
+    obs2X = [1.5, 1.9]
     targetX = np.array([1, 1]).reshape(-1,1)
     d_min = 0.3
     obs1 = circle2D(obsX[0], obsX[1], d_min, ax, 0)
+    obs2 = circle2D(obs2X[0], obs2X[1], d_min, ax, 0)
     
     ax.scatter(targetX[0,0], targetX[1,0],c='g')
     
@@ -368,12 +381,13 @@ if 1:
     for i in range(num_steps):
         
         h3, dh3_dx = robot.agent_barrier( obs1, d_min )
+        h4, dh4_dx = robot.agent_barrier( obs2, d_min )
         V, dV_dx = robot.lyapunov( targetX )
         # print(f"V:{V}, dV_dx:{dV_dx}")
-        A1.value[0,:] = 1.0*(-dV_dx @ robot.g())
-        A1.value[1,:] = 0.0*(dh3_dx @ robot.g())
-        b1.value[0,:] = 1.0*(-dV_dx @ robot.f() - 1.0 * V )
-        b1.value[1,:] = 0.0*(dh3_dx @ robot.f() + alpha3 * h3)
+        A1.value[0,:] = 0.0*(-dV_dx @ robot.g())
+        A1.value[1,:] = 1.0*(dh3_dx @ robot.g())
+        b1.value[0,:] = 0.0*(-dV_dx @ robot.f() - 1.0 * V )
+        b1.value[1,:] = 1.0*(dh3_dx @ robot.f() + alpha3 * h3)
         cbf_controller.solve(solver=cp.GUROBI, reoptimize=True)
         
         if cbf_controller.status!='optimal':
