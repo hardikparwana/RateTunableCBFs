@@ -18,7 +18,7 @@ obsX2 = np.array([1.5,1.9]) #1.5,1.9
 d_obs = 0.3
 goalX = np.array([2.0,3.0])
 u1_max_square = 5*5
-u2_max_square = 2*2
+u2_max_square = 5*5
 
 def step(x,u): # states: x,y,phi,u,v,r
     V_w = 0#0.1
