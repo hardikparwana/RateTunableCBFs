@@ -10,7 +10,7 @@ from robot_models.uav2DJIT import *
 from robot_models.uav_2d import UAV_2d
 
 dt_inner = 0.01
-tf = 30
+tf = 40
 # N = int( tf/dt_inner )
 # N = 100#100
 # tf =  int( N * dt_inner ) #20
