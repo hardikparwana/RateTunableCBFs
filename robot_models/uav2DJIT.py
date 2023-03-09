@@ -78,7 +78,7 @@ def uav_SI2D_barrier_jit(X, targetX, alpha1, alpha2):#, min_D = torch.tensor(0.3
                          torch.cat(( zero, zero, zero, zero, zero, one, zero ), dim=1),
                          torch.cat(( zero, zero, zero, (X_u + X_u_u*2*X[3,0]*torch.sign(X[3,0])).reshape(-1,1)/m11, m22*X[5,0].reshape(-1,1)/m11, m22*X[4,0].reshape(-1,1)/m11, one/m11), dim=1),
                          torch.cat(( zero, zero, zero, -m11*X[5,0].reshape(-1,1)/m22, (Y_v+2*Y_v_v*X[4,0]*torch.sign(X[4,0])).reshape(-1,1)/m22, -m11*X[3,0].reshape(-1,1)/m22, zero) , dim=1),
-                         torch.cat(( zero, zero, zero, (m11-m22)*X[4,0].reshape(-1,1)/m33, (m11-m22)*X[3,0].reshape(-1,1)/m33, 2*(N_r+N_r_r*X[5,0]*torch.sign(X[5,0])).reshape(-1,1)/m33, zero), dim=1)
+                         torch.cat(( zero, zero, zero, (m11-m22)*X[4,0].reshape(-1,1)/m33, (m11-m22)*X[3,0].reshape(-1,1)/m33, 1*(N_r+2*N_r_r*X[5,0]*torch.sign(X[5,0])).reshape(-1,1)/m33, zero), dim=1)
                             ))
     
     h = torch.norm( X[0:2] - targetX[0:2] )**2 - min_D**2           

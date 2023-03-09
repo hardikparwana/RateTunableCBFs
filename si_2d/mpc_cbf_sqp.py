@@ -235,9 +235,9 @@ def simulate_scenario( movie_name = 'test.mp4', adapt = True, enforce_input_cons
                             
                             grads = np.clip( grads, -2.0, 2.0 )
                             
-                            params[0] = np.clip( params[0] + lr_alpha * grads[0], 0.0, None )
-                            params[1] = np.clip( params[1] + lr_alpha * grads[1], 0.0, None )
-                            params[2] = np.clip( params[2] + lr_alpha * grads[2], 0.0, None )
+                            params[0] = np.clip( params[0] + lr_alpha * grads[0], 0.0, None ).item()
+                            params[1] = np.clip( params[1] + lr_alpha * grads[1], 0.0, None ).item()
+                            params[2] = np.clip( params[2] + lr_alpha * grads[2], 0.0, None ).item()
                             # print(f"grads: {grads.T}, params: {params}")
                 else:
                     
@@ -250,9 +250,9 @@ def simulate_scenario( movie_name = 'test.mp4', adapt = True, enforce_input_cons
                             
                             grads = np.clip( grads, -2.0, 2.0 )
                             
-                            params[0] = np.clip( params[0] + lr_alpha * grads[0], 0.0, None )
-                            params[1] = np.clip( params[1] + lr_alpha * grads[1], 0.0, None )
-                            params[2] = np.clip( params[2] + lr_alpha * grads[2], 0.0, None )
+                            params[0] = np.clip( params[0] + lr_alpha * grads[0], 0.0, None ).item()
+                            params[1] = np.clip( params[1] + lr_alpha * grads[1], 0.0, None ).item()
+                            params[2] = np.clip( params[2] + lr_alpha * grads[2], 0.0, None ).item()
                             # print(f"grads: {grads.T}, params: {params}")
                             
                     offline_done = True

@@ -2,6 +2,7 @@ import numpy as np
 import cvxpy as cp
 from cvxpylayers.torch import CvxpyLayer
 import matplotlib.pyplot as plt
+from matplotlib.animation import FFMpegWriter
 import time
 from robot_models.obstacles import circle2D
 from utils.utils import *
@@ -11,18 +12,21 @@ from robot_models.unicycle_mpc import Unicycle
 dt_inner = 0.05
 N = 100
 tf =  int( 100 * dt_inner ) #20
-outer_loop = 10
-dt_outer = 0.1
-H = 100
-lr_alpha = 0.1#0.05
-plot_x_lim = (-0.5,3.5)  
-plot_y_lim = (-0.5,3.5) 
+outer_loop = 2
+num_gd_iterations = 1
+dt_outer = 0.05
+H = 50#100
+lr_alpha = 0.05#0.05
+plot_x_lim = (-2.0,3.5)  
+plot_y_lim = (-2.0,3.5) 
 
 # starting point
 # X_init = np.array([-0.5,-0.5,np.pi/2])
-X_init = np.array([-0.5,-0.5,np.pi/2])
+X_init = np.array([-0.5,-0.5,np.pi/4])
 d_obs = 0.3
 goalX = np.array([2.0,2.0])
+obs1X = [0.7, 0.7]
+obs2X = [1.5, 1.9]
 
 # input bounds
 u1_max = 2
@@ -58,6 +62,7 @@ def initialize_tensors(robot, obs1, obs2, params):
     obs1.X_torch = torch.tensor(obs1.X, dtype=torch.float).reshape(-1,1)
     obs2.X_torch = torch.tensor(obs2.X, dtype=torch.float).reshape(-1,1)
     robot.params = torch.tensor( params, dtype=torch.float, requires_grad=True )
+    return
 
 def compute_reward(robot, obs1, obs2, params, dt_outer):
     
@@ -68,6 +73,7 @@ def compute_reward(robot, obs1, obs2, params, dt_outer):
     maintain_constraints = []
     improve_constraints = []  
     
+    global H
     for i in range(H):
 
         # make  control matrices
@@ -76,7 +82,8 @@ def compute_reward(robot, obs1, obs2, params, dt_outer):
         control, deltas = cbf_controller_layer( control_ref, A, b )
         
         # Check for constraints that need to be maintained or kept
-        # if np.any( deltas[1:].detach().numpy() > 0.01 ):
+        if np.any( deltas[1:].detach().numpy() > 0.01 ):
+            print(f"Error, control:{control.T}, delta:{deltas.T}")
         #     # if improve_constraints == []:
         #     #     improve_constraints = 
         #     improve_constraints = torch.cat( improve_constraints )
@@ -150,7 +157,7 @@ def constrained_update( objective, maintain_constraints, improve_constraints, pa
 
 
 
-def simulate_scenario( movie_name = 'test.mp4', adapt = True, enforce_input_constraints = False, params = [1.0, 0.8, 0.8], plot_x_lim = (-5,5), plot_y_lim = (-5,5) ):
+def simulate_scenario( movie_name = 'test.mp4', adapt = True, enforce_input_constraints = False, params = [1.0, 2.0, 2.0], plot_x_lim = (-5,5), plot_y_lim = (-5,5), offline = False, offline_iterations = 20 ):
 
     t = 0
     
@@ -162,8 +169,9 @@ def simulate_scenario( movie_name = 'test.mp4', adapt = True, enforce_input_cons
     ax.set_aspect(1)
     
     robot = Unicycle( X_init, dt_inner, ax )
-    obs1 = circle2D(0.7,0.7,d_obs,ax,0)
-    obs2 = circle2D(1.5,1.9,d_obs,ax,1)#1.5, 1.9
+    global obs1X, obs2X
+    obs1 = circle2D(obs1X[0], obs1X[1], d_obs,ax,0)
+    obs2 = circle2D(obs2X[0], obs2X[1], d_obs,ax,1)#1.5, 1.9
     params_copy = np.copy( np.asarray(params) )
     
     i = 0
@@ -171,63 +179,131 @@ def simulate_scenario( movie_name = 'test.mp4', adapt = True, enforce_input_cons
     step_params = np.asarray(params).reshape(-1,1)
     
     initialize_tensors( robot, obs1, obs2, params )
+    
+    offline_done = False
+    global H    
+    metadata = dict(title='Movie Adapt 0', artist='Matplotlib',comment='Movie support!')
+    writer = FFMpegWriter(fps=15, metadata=metadata)
+    with writer.saving(fig, movie_name, 100): 
+    
+        while (t < tf):
 
-    while (t < tf):
+            i = i + 1
+            
+            if (H>2):
+                H = H - 1
 
-        i = i + 1
-
-        if (i % outer_loop != 0): # compute control input and move the robot
-            
-            robot.X_torch = torch.tensor(robot.X, dtype=torch.float)
-        
-            # get controller
-            control_ref = unicycle_nominal_input_jit( robot.X_torch, robot.goal_torch )
-            A, b = unicycle2D_qp_constraints_jit( robot.X_torch, robot.goal_torch, obs1.X_torch, obs2.X_torch, torch.tensor(params[0], dtype=torch.float), torch.tensor(params[1], dtype=torch.float), torch.tensor(params[2], dtype=torch.float) )
-            control, deltas = cbf_controller_layer( control_ref, A, b )
-            
-            # print(f"control: {control.T}")
-            robot.step( control.detach().numpy() )
-            robot.render_plot()
-            
-            step_rewards.append( unicycle_compute_reward_jit( torch.tensor(robot.X_torch, dtype=torch.float), robot.goal_torch, control ).item() )
-            step_params = np.append( step_params, np.asarray(params).reshape(-1,1), axis=1 )
-            
-            
-            # Nominal robot
-            robot.X_nominal_torch = torch.tensor(robot.X_nominal, dtype=torch.float)
-            control_ref = unicycle_nominal_input_jit( robot.X_nominal_torch, robot.goal_torch )
-            A, b = unicycle2D_qp_constraints_jit( robot.X_nominal_torch, robot.goal_torch, obs1.X_torch, obs2.X_torch, torch.tensor(params_copy[0], dtype=torch.float), torch.tensor(params_copy[1], dtype=torch.float), torch.tensor(params_copy[2], dtype=torch.float) )
-            control, deltas = cbf_controller_layer( control_ref, A, b )            
-            robot.step_nominal( control.detach().numpy() )
-            
-            
-            
-            fig.canvas.draw()
-            fig.canvas.flush_events()
-        
-            t = t + dt_inner
-            
-        else: # update parameters with predictive framework
-            
-            initialize_tensors(robot, obs1, obs2, params )
-            
-            for k in range(5):
-                success = False
+            if ((i % outer_loop != 0) and (not offline)) or ( offline and offline_done ): # compute control input and move the robot
                 
-                while not success:            
-                    reward, improve_constraints, maintain_constraints, success = compute_reward(robot, obs1, obs2, robot.params, torch.tensor(dt_outer, dtype=torch.float))
-                    grads = constrained_update( reward, maintain_constraints, improve_constraints, robot.params )
-                    
-                    grads = np.clip( grads, -2.0, 2.0 )
-                    
-                    params[0] = np.clip( params[0] + lr_alpha * grads[0], 0.0, None )
-                    params[1] = np.clip( params[1] + lr_alpha * grads[1], 0.0, None )
-                    params[2] = np.clip( params[2] + lr_alpha * grads[2], 0.0, None )
-                    # print(f"grads: {grads.T}, params: {params}")
+                robot.X_torch = torch.tensor(robot.X, dtype=torch.float)
+            
+                # get controller
+                control_ref = unicycle_nominal_input_jit( robot.X_torch, robot.goal_torch )
+                A, b = unicycle2D_qp_constraints_jit( robot.X_torch, robot.goal_torch, obs1.X_torch, obs2.X_torch, torch.tensor(params[0], dtype=torch.float), torch.tensor(params[1], dtype=torch.float), torch.tensor(params[2], dtype=torch.float) )
+                control, deltas = cbf_controller_layer( control_ref, A, b )
                 
+                # print(f"control: {control.T}")
+                robot.step( control.detach().numpy() )
+                robot.render_plot()
+                
+                step_rewards.append( unicycle_compute_reward_jit( torch.tensor(robot.X_torch, dtype=torch.float), robot.goal_torch, control ).item() )
+                step_params = np.append( step_params, np.asarray(params).reshape(-1,1), axis=1 )
+                
+                
+                # Nominal robot
+                robot.X_nominal_torch = torch.tensor(robot.X_nominal, dtype=torch.float)
+                control_ref = unicycle_nominal_input_jit( robot.X_nominal_torch, robot.goal_torch )
+                A, b = unicycle2D_qp_constraints_jit( robot.X_nominal_torch, robot.goal_torch, obs1.X_torch, obs2.X_torch, torch.tensor(params_copy[0], dtype=torch.float), torch.tensor(params_copy[1], dtype=torch.float), torch.tensor(params_copy[2], dtype=torch.float) )
+                control, deltas = cbf_controller_layer( control_ref, A, b )            
+                robot.step_nominal( control.detach().numpy() )
+                
+                
+                
+                fig.canvas.draw()
+                fig.canvas.flush_events()
+                writer.grab_frame()
+            
+                t = t + dt_inner
+                
+            else: # update parameters with predictive framework
+                
+                initialize_tensors(robot, obs1, obs2, params )
+                
+                if (not offline): 
+                
+                    for k in range(num_gd_iterations):
+                        success = False                    
+                        while not success:            
+                            robot.params = torch.tensor( params, dtype=torch.float, requires_grad=True )
+                            reward, improve_constraints, maintain_constraints, success = compute_reward(robot, obs1, obs2, robot.params, torch.tensor(dt_outer, dtype=torch.float))
+                            grads = constrained_update( reward, maintain_constraints, improve_constraints, robot.params )
+                            
+                            grads = np.clip( grads, -2.0, 2.0 )
+                            
+                            params[0] = np.clip( params[0] + lr_alpha * grads[0], 0.0, None ).item()
+                            params[1] = np.clip( params[1] + lr_alpha * grads[1], 0.0, None ).item()
+                            params[2] = np.clip( params[2] + lr_alpha * grads[2], 0.0, None ).item()
+                            print(f"k:{k}, grads: {grads.T}, params: {params}")
+                else:
+                    
+                    for k in range( offline_iterations ):        
+                        print(f"k:{k}")            
+                        success = False                    
+                        while not success:            
+                            robot.params = torch.tensor( params, dtype=torch.float, requires_grad=True )
+                            reward, improve_constraints, maintain_constraints, success = compute_reward(robot, obs1, obs2, robot.params, torch.tensor(dt_outer, dtype=torch.float))
+                            grads = constrained_update( reward, maintain_constraints, improve_constraints, robot.params )
+                            
+                            grads = np.clip( grads, -2.0, 2.0 )
+                            
+                            params[0] = np.clip( params[0] + lr_alpha * grads[0], 0.0, None ).item()
+                            params[1] = np.clip( params[1] + lr_alpha * grads[1], 0.0, None ).item()
+                            params[2] = np.clip( params[2] + lr_alpha * grads[2], 0.0, None ).item()
+                            # print(f"grads: {grads.T}, params: {params}")
+                            
+                    offline_done = True
+                    
     return fig, ax, robot, step_rewards, step_params
 
             
-            
 # Run simulations
-fig1, ax1, robot1, rewards1, params1 = simulate_scenario( movie_name = 'test.mp4', adapt=True, enforce_input_constraints=True, params = [1.0, 3.0, 3.0], plot_x_lim = plot_x_lim, plot_y_lim = plot_y_lim )            
+# fig1, ax1, robot1, rewards1, params1 = simulate_scenario( movie_name = 'RateTunableCBFs/unicycle_2d/figures/cs4_case1_rc.mp4', adapt=True, enforce_input_constraints=True, params = [1.0, 0.0, 0.0], plot_x_lim = plot_x_lim, plot_y_lim = plot_y_lim, offline = False, offline_iterations=20 )            
+fig1, ax1, robot1, rewards1, params1 = simulate_scenario( movie_name = 'unicycle_2d/figures/cs4_case1_rc.mp4', adapt=True, enforce_input_constraints=True, params = [3.0, 0.0, 0.0], plot_x_lim = plot_x_lim, plot_y_lim = plot_y_lim, offline = False, offline_iterations=20 )            
+# fig2, ax2, robot2, rewards2, params2 = simulate_scenario( movie_name = 'unicycle_2d/figures/cs4_case2_rc.mp4', adapt=True, enforce_input_constraints=True, params = [0.5, 0.5, 0.5], plot_x_lim = plot_x_lim, plot_y_lim = plot_y_lim, offline = False, offline_iterations=20 )            
+# fig3, ax3, robot3, rewards3, params3 = simulate_scenario( movie_name = 'unicycle_2d/figures/cs4_case1_offline.mp4', adapt=True, enforce_input_constraints=True, params = [1.0, 3.0, 3.0], plot_x_lim = plot_x_lim, plot_y_lim = plot_y_lim, offline = True, offline_iterations=20 )            
+# fig4, ax4, robot4, rewards4, params4 = simulate_scenario( movie_name = 'unicycle_2d/figures/cs4_case2_offline.mp4', adapt=True, enforce_input_constraints=True, params = [0.5, 0.5, 0.5], plot_x_lim = plot_x_lim, plot_y_lim = plot_y_lim, offline = True, offline_iterations=20 )
+# exit()
+plt.ioff()
+plt.show()
+with open('unicycle_2d/mpc_case1.npy', 'rb') as f:
+    Xs = np.load(f)
+    
+fig, ax = plt.subplots(1,1)
+ax.set_xlim( plot_x_lim )
+ax.set_ylim( plot_y_lim )
+
+# Plot obstacles
+circ = plt.Circle((obs1X[0],obs1X[1]),d_obs, linewidth = 1, edgecolor='k',facecolor='k')
+ax.add_patch(circ)
+circ2 = plt.Circle((obs2X[0],obs2X[1]),d_obs, linewidth = 1, edgecolor='k',facecolor='k')
+ax.add_patch(circ2)
+
+# Plot MPC solution
+ax.plot(Xs[0,1:], Xs[1,1:],'r', label='MPC')
+
+# Plot new solution
+
+# Case 1
+ax.plot(robot1.Xs_nominal[0,:], robot1.Xs_nominal[1,:], 'g', label='Nominal Case 1')
+ax.plot(robot1.Xs[0,:], robot1.Xs[1,:], 'g.', label='RC Case 1')
+ax.plot(robot3.Xs[0,:], robot3.Xs[1,:], 'g-.', label='Fixed tuned Case 1')
+
+# Case 2
+ax.plot(robot2.Xs_nominal[0,:], robot2.Xs_nominal[1,:], 'b', label='Nominal Case 2')
+ax.plot(robot2.Xs[0,:], robot2.Xs[1,:], 'b.', label='RC Case 2')
+ax.plot(robot4.Xs[0,:], robot4.Xs[1,:], 'b-.', label='Fixed tuned Case 2')
+
+# Show plot
+ax.legend()
+fig.savefig("unicycle_2d/figures/cs4.png")
+plt.show()

@@ -5,7 +5,7 @@ import matplotlib.patches as mpatches
 
 class Unicycle:
     
-    def __init__(self,X0,dt,ax,id = 0, mode = 'ego', target = 0, color='r',alpha = 0.8, palpha=1.0,plot=True, nominal_plot=True, num_constraints = 0, num_robots = 1, plot_fov=True):
+    def __init__(self,X0,dt,ax,id = 0, mode = 'ego', target = 0, color='r',alpha = 0.8, palpha=1.0,plot=True, nominal_plot=True, num_constraints = 0, num_robots = 1, plot_fov=False):
         '''
         X0: iniytial state
         dt: simulation time step

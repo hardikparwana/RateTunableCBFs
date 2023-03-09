@@ -180,6 +180,7 @@ def simulate_scenario( movie_name = 'test.mp4', adapt = True, enforce_input_cons
     
     initialize_tensors( robot, obs1, obs2, params )
     
+    nominal_failed = False
     offline_done = False
     global H    
     metadata = dict(title='Movie Adapt 0', artist='Matplotlib',comment='Movie support!')
@@ -202,7 +203,7 @@ def simulate_scenario( movie_name = 'test.mp4', adapt = True, enforce_input_cons
                 control_ref = torch.tensor([0,0], dtype=torch.float).reshape(-1,1)
                 A, b = traced_uav2D_qp_constraints_jit( robot.X_torch, robot.goal_torch, obs1.X_torch, obs2.X_torch, torch.tensor(params[0], dtype=torch.float), torch.tensor(params[1], dtype=torch.float), torch.tensor(params[2], dtype=torch.float), torch.tensor(params[3], dtype=torch.float) )
                 control, deltas = cbf_controller_layer( control_ref, A, b )
-                
+                print(f"actual: {control.T}") 
                 # print(f"control: {control.T}")
                 robot.step( control.detach().numpy() )
                 robot.render_plot()
@@ -212,11 +213,16 @@ def simulate_scenario( movie_name = 'test.mp4', adapt = True, enforce_input_cons
                 
                 
                 # Nominal robot
-                robot.X_nominal_torch = torch.tensor(robot.X_nominal, dtype=torch.float)
-                control_ref = torch.tensor([0,0], dtype=torch.float).reshape(-1,1)
-                A, b = traced_uav2D_qp_constraints_jit( robot.X_nominal_torch, robot.goal_torch, obs1.X_torch, obs2.X_torch, torch.tensor(params_copy[0], dtype=torch.float), torch.tensor(params_copy[1], dtype=torch.float), torch.tensor(params_copy[2], dtype=torch.float), torch.tensor(params_copy[3], dtype=torch.float) )
-                control, deltas = cbf_controller_layer( control_ref, A, b )            
-                robot.step_nominal( control.detach().numpy() )
+                if not nominal_failed:
+                    robot.X_nominal_torch = torch.tensor(robot.X_nominal, dtype=torch.float)
+                    control_ref = torch.tensor([0,0], dtype=torch.float).reshape(-1,1)
+                    A, b = traced_uav2D_qp_constraints_jit( robot.X_nominal_torch, robot.goal_torch, obs1.X_torch, obs2.X_torch, torch.tensor(params_copy[0], dtype=torch.float), torch.tensor(params_copy[1], dtype=torch.float), torch.tensor(params_copy[2], dtype=torch.float), torch.tensor(params_copy[3], dtype=torch.float) )
+                    control, deltas = cbf_controller_layer( control_ref, A, b )  
+                    if np.any( deltas[1:].detach().numpy() > 0.1 ):
+                        nominal_failed = True
+                        print(f"Error, Nominal controller failed: control:{control.T}, delta:{deltas.T}")
+                    print(f"nominal: {control.T}")          
+                    robot.step_nominal( control.detach().numpy() )
                 
                 fig.canvas.draw()
                 fig.canvas.flush_events()

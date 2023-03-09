@@ -32,14 +32,14 @@ def unicycle2D_lyapunov_jit(X, G, min_D = torch.tensor(0.3, dtype=torch.float), 
 
 # @torch.jit.script
 def sigma_torch(s):
-    k1 = torch.tensor(4.0, dtype=torch.float)
-    k2 = torch.tensor(1.0, dtype=torch.float)
+    k1 = torch.tensor(3.0, dtype=torch.float)
+    k2 = torch.tensor(0.5, dtype=torch.float)
     return k2 * torch.div( (torch.exp(k1-s)-1) , (torch.exp(k1-s)+1) )
 
 # @torch.jit.script
 def sigma_der_torch(s):
-    k1 = torch.tensor(4.0, dtype=torch.float)
-    k2 = torch.tensor(1.0, dtype=torch.float)
+    k1 = torch.tensor(3.0, dtype=torch.float) # 4.0
+    k2 = torch.tensor(0.5, dtype=torch.float) # 1.0
     return - k2 * torch.div ( torch.exp(k1-s),( 1+torch.exp( k1-s ) ) ) @ ( 1 - sigma_torch(s)/k2 )
 
 # @torch.jit.script

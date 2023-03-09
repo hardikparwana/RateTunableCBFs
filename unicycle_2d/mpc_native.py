@@ -15,6 +15,10 @@ obsX2 = np.array([1.5,1.9])
 d_obs = 0.3
 goalX = np.array([2.0,2.0])
 
+u_max_square = 20000000*20000000
+
+
+
 def step(x,u):
     return np.array( [ u[0]*np.cos(x[2]),
                       u[0]*np.sin(x[2]),
@@ -82,8 +86,8 @@ class mpc():
         # input bounds (N-1)*m
         for i in range(N-1):
             ui = x[(n+m)*i+n:(n+m)*i+n+m]
-            cons = np.append( cons, 5 - ui[0]**2 )
-            cons = np.append( cons, 5 - ui[1]**2 )
+            cons = np.append( cons, u_max_square - ui[0]**2 )
+            cons = np.append( cons, u_max_square - ui[1]**2 )
             
         # state constraints: obstacle at obsX
         for i in range(N): # 2*N constraints

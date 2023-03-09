@@ -299,7 +299,7 @@ class UAV_2d:
                          [ 0, 0, 0, 0, 0, 1, 0 ],
                          [ 0, 0, 0, (X_u + X_u_u*2*self.X[3,0]*np.sign(self.X[3,0]))/m11, m22*self.X[5,0]/m11, m22*self.X[4,0]/m11, 1/m11 ],
                          [ 0, 0, 0, -m11*self.X[5,0]/m22, (Y_v+2*Y_v_v*self.X[4,0]*np.sign(self.X[4,0]))/m22, -m11*self.X[3,0]/m22, 0  ],
-                         [ 0, 0, 0, (m11-m22)*self.X[4,0]/m33, (m11-m22)*self.X[3,0]/m33, 2*(N_r+N_r_r*self.X[5,0]*np.sign(self.X[5,0]))/m33, 0 ]
+                         [ 0, 0, 0, (m11-m22)*self.X[4,0]/m33, (m11-m22)*self.X[3,0]/m33, (N_r+2*N_r_r*self.X[5,0]*np.sign(self.X[5,0]))/m33, 0 ]
                         ])
         
         h = np.linalg.norm( self.X[0:2] - agent.X[0:2] )**2 - d_min**2           

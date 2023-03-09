@@ -6,17 +6,18 @@ import time
 # from tempfile import TemporaryFile
 # outfile = TemporaryFile()
 
-dt = 0.04
-N = 200#200#50
-n = 6
+dt = 0.05
+N = 100#200#50
+n = 7
 m = 2
 # starting point
 x0 = np.zeros((N-1)*(n+m)+n)
-X_init = np.array([-0.5,-0.5, 0, 0, 0, 0])
+X_init = np.array([-0.5,-0.5, 0, 0.1, 0.1, 0, 0.1])
 obsX = np.array([0.7,0.7])
-obsX2 = np.array([1.9,1.4]) #1.5,1.9
+obsX2 = np.array([1.5,1.9]) #1.5,1.9
 d_obs = 0.3
 goalX = np.array([2.0,2.0])
+u_max_square = 100
 
 def step(x,u): # states: x,y,phi,u,v,r
     V_w = 0.1
@@ -33,10 +34,11 @@ def step(x,u): # states: x,y,phi,u,v,r
     return np.array( [ x[3]*np.cos(x[2])-x[4]*np.sin(x[2])+V_w*np.cos(theta_w),
                        x[3]*np.sin(x[2])+x[4]*np.cos(x[2])+V_w*np.sin(theta_w),
                        x[5],
-                       (m22*x[4]*x[5]+X_u*x[3]+X_u_u*np.abs(x[3])*x[3])/m11,
+                       (m22*x[4]*x[5]+X_u*x[3]+X_u_u*np.abs(x[3])*x[3]+x[6])/m11,
                        (-m11*x[3]*x[5]+Y_v*x[4]+Y_v_v*np.abs(x[4])*x[4])/m22,
-                       ((m11-m22)*x[3]*x[4]+N_r*x[5]+N_r_r*np.abs(x[5])*x[5])/m33 
-                    ] )*dt + np.array([0,0,0,u[0],0,u[1]])*dt
+                       ((m11-m22)*x[3]*x[4]+N_r*x[5]+N_r_r*np.abs(x[5])*x[5])/m33,
+                       0 
+                    ] )*dt + np.array([0,0,0,0,0,u[1]/m33,u[0]])*dt
     
 def step_grad(x,u):
     # V_w = 0.4
@@ -66,21 +68,23 @@ def step_grad(x,u):
     
     
     Dstep_dx = np.array([ 
-                         [ 0, 0, -x[3]*np.sin(x[2])-x[4]*np.cos(x[2]), np.cos(x[2]), -np.sin(x[2]), 0],
-                         [ 0, 0, x[3]*np.cos(x[2])-x[4]*np.sin(x[2]), np.sin(x[2]), np.cos(x[2]), 0],
-                         [ 0, 0, 0, 0, 0, 1 ],
-                         [ 0, 0, 0, (X_u + X_u_u*2*x[3]*np.sign(x[3]))/m11, m22*x[5]/m11, m22*x[4]/m11 ],
-                         [ 0, 0, 0, -m11*x[5]/m22, (Y_v+2*Y_v_v*x[4]*np.sign(x[4]))/m22, -m11*x[3]/m22  ],
-                         [ 0, 0, 0, (m11-m22)*x[4]/m33, (m11-m22)*x[3]/m33, 2*(N_r+N_r_r*x[5]*np.sign(x[5]))/m33 ]
+                         [ 0, 0, -x[3]*np.sin(x[2])-x[4]*np.cos(x[2]), np.cos(x[2]), -np.sin(x[2]), 0, 0],
+                         [ 0, 0, x[3]*np.cos(x[2])-x[4]*np.sin(x[2]), np.sin(x[2]), np.cos(x[2]), 0, 0],
+                         [ 0, 0, 0, 0, 0, 1, 0 ],
+                         [ 0, 0, 0, (X_u + X_u_u*2*x[3]*np.sign(x[3]))/m11, m22*x[5]/m11, m22*x[4]/m11, 1.0/m11 ],
+                         [ 0, 0, 0, -m11*x[5]/m22, (Y_v+2*Y_v_v*x[4]*np.sign(x[4]))/m22, -m11*x[3]/m22, 0  ],
+                         [ 0, 0, 0, (m11-m22)*x[4]/m33, (m11-m22)*x[3]/m33, (N_r+2*N_r_r*x[5]*np.sign(x[5]))/m33, 0 ],
+                         [ 0, 0, 0, 0, 0, 0, 0]
                         ]) * dt
     
     Dstep_du = np.array([
                         [0, 0],
                         [0, 0],
                         [0, 0],
-                        [1/m11, 0],
                         [0, 0],
-                        [0, 1/m33]
+                        [0, 0],
+                        [0, 1/m33],
+                        [1, 0]
     ]) * dt
     
     return Dstep_dx, Dstep_du
@@ -101,12 +105,12 @@ class mpc():
         i = 0
         xi = x[(n+m)*i:(n+m)*i+n]
         ui = x[(n+m)*i+n:(n+m)*i+n+m]
-        grad = 2 * 10 * np.append(xi[0:2]-obsX, [0,0,0,0])
+        grad = 2 * 10 * np.append(xi[0:2]-obsX, [0,0,0,0,0])
         grad = np.append( grad, ui  )
         for i in range(1,N):
             xi = x[(n+m)*i:(n+m)*i+n]
             ui = x[(n+m)*i+n:(n+m)*i+n+m]
-            grad = np.append( grad, np.append(2 * 10 * (xi[0:2]-goalX), [0,0,0,0]) )
+            grad = np.append( grad, np.append(2 * 10 * (xi[0:2]-goalX), [0,0,0,0,0]) )
             grad = np.append( grad, 2 * ui  )
         return grad
     
@@ -130,8 +134,8 @@ class mpc():
         # input bounds (N-1)*m
         for i in range(N-1):
             ui = x[(n+m)*i+n:(n+m)*i+n+m]
-            cons = np.append( cons, 10 - ui[0]**2 )
-            cons = np.append( cons, 10 - ui[1]**2 )
+            cons = np.append( cons, u_max_square - ui[0]**2 )
+            cons = np.append( cons, u_max_square - ui[1]**2 )
             
         # state constraints: obstacle at obsX
         for i in range(N): # 2*N constraints
@@ -220,9 +224,10 @@ nlp = cyipopt.Problem(
 
 nlp.add_option('mu_strategy', 'adaptive')
 nlp.add_option('tol', 1e-7)
-nlp.add_option('linear_solver', 'ma57')
+nlp.add_option('linear_solver', 'ma97')#ma57
 t0 = time.time()
 X_sol, info = nlp.solve(x0)
+# exit()
 print("time: ", time.time()-t0)
 # print(X_sol)
 
