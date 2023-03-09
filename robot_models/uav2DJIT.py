@@ -1,7 +1,7 @@
 import numpy as np
 import torch
 
-V_w = 0.1
+V_w = 0.0#0.1
 theta_w = torch.tensor(np.pi/3, dtype=torch.float)
 m11 = torch.tensor(5.5404, dtype=torch.float)
 m22 = torch.tensor(9.6572, dtype=torch.float)
@@ -132,7 +132,7 @@ def uav2D_lyapunov_jit(X, G):
         ri = X[5,0]
         tau_ui = X[6,0]
         
-        V_w = 0.1
+        V_w = 0.0#0.1
         theta_w = torch.tensor(np.pi/3, dtype=torch.float)
         m11 = 5.5404
         m22 = 9.6572

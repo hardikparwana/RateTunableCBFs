@@ -67,7 +67,7 @@ class UAV_2d:
         self.trust = np.zeros((1,num_robots))
         
     def f(self):
-        V_w = 0.1
+        V_w = 0.0#0.1
         theta_w = np.pi/3
         m11 = 5.5404
         m22 = 9.6572
@@ -87,7 +87,7 @@ class UAV_2d:
                        0]).reshape(-1,1)
     
     def g(self):
-        V_w = 0.1
+        V_w = 0.0#0.1
         theta_w = np.pi/3
         m11 = 5.5404
         m22 = 9.6572
@@ -107,7 +107,7 @@ class UAV_2d:
                           [ 1, 0 ] ])  
         
     def f_nominal(self):
-        V_w = 0.1
+        V_w = 0.0#0.1
         theta_w = np.pi/3
         m11 = 5.5404
         m22 = 9.6572
@@ -127,7 +127,7 @@ class UAV_2d:
                        0 ] ).reshape(-1,1)
     
     def g_nominal(self):
-        V_w = 0.1
+        V_w = 0.0#0.1
         theta_w = np.pi/3
         m11 = 5.5404
         m22 = 9.6572
@@ -190,7 +190,7 @@ class UAV_2d:
         c2 = 5.0
         c3 = 1.0
         
-        V_w = 0.1
+        V_w = 0.0#0.1
         theta_w = np.pi/3
         m11 = 5.5404
         m22 = 9.6572
@@ -266,7 +266,7 @@ class UAV_2d:
        
     def agent_barrier(self, agent, d_min):
         
-        V_w = 0.1
+        V_w = 0.0#0.1
         theta_w = np.pi/3
         m11 = 5.5404
         m22 = 9.6572
@@ -384,9 +384,9 @@ if 0:
         h4, dh4_dx = robot.agent_barrier( obs2, d_min )
         V, dV_dx = robot.lyapunov( targetX )
         # print(f"V:{V}, dV_dx:{dV_dx}")
-        A1.value[0,:] = 0.0*(-dV_dx @ robot.g())
+        A1.value[0,:] = 1.0*(-dV_dx @ robot.g())
         A1.value[1,:] = 1.0*(dh3_dx @ robot.g())
-        b1.value[0,:] = 0.0*(-dV_dx @ robot.f() - 1.0 * V )
+        b1.value[0,:] = 1.0*(-dV_dx @ robot.f() - 1.0 * V )
         b1.value[1,:] = 1.0*(dh3_dx @ robot.f() + alpha3 * h3)
         cbf_controller.solve(solver=cp.GUROBI, reoptimize=True)
         

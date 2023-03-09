@@ -9,7 +9,7 @@ from utils.utils import *
 from robot_models.uav2DJIT import *
 from robot_models.uav_2d import UAV_2d
 
-dt_inner = 0.01
+dt_inner = 0.05
 tf = 40
 # N = int( tf/dt_inner )
 # N = 100#100
@@ -17,8 +17,8 @@ tf = 40
 outer_loop = 2
 num_gd_iterations = 5
 dt_outer = 0.05
-H = 50#100
-lr_alpha = 0.1#0.05
+H = 60#100
+lr_alpha = 0.05#0.05
 plot_x_lim = (-1.0,3.5)  
 plot_y_lim = (-0.8,3) 
 
@@ -26,13 +26,13 @@ plot_y_lim = (-0.8,3)
 # X_init = np.array([-0.5,-0.5,np.pi/2])
 X_init = np.array([-0.5,-0.5, 0, 0.1, 0.1, 0, 0.1 ])
 d_obs = 0.3
-goalX = np.array([2.0,2.0])
+goalX = np.array([2.0,3.0])
 obs1X = [0.7, 0.7]
 obs2X = [1.5, 1.9]
 
 # input bounds
-u1_max = 10
-u2_max = 10
+u1_max = 5
+u2_max = 2.0
 
 
 ##  Define Controller ################
@@ -192,8 +192,8 @@ def simulate_scenario( movie_name = 'test.mp4', adapt = True, enforce_input_cons
 
             i = i + 1
             
-            if (H>2):
-                H = H - 1
+            # if (H>2):
+            #     H = H - 1
 
             if ((i % outer_loop != 0) and (not offline)) or ( offline and offline_done ): # compute control input and move the robot
                 
@@ -239,7 +239,8 @@ def simulate_scenario( movie_name = 'test.mp4', adapt = True, enforce_input_cons
                     for k in range(num_gd_iterations):
                         print(f"k:{k}")    
                         success = False                    
-                        while not success:            
+                        while not success:       
+                            robot.params = torch.tensor( params, dtype=torch.float, requires_grad=True )     
                             reward, improve_constraints, maintain_constraints, success = compute_reward(robot, obs1, obs2, robot.params, torch.tensor(dt_outer, dtype=torch.float))
                             grads = constrained_update( reward, maintain_constraints, improve_constraints, robot.params )
                             
@@ -255,7 +256,8 @@ def simulate_scenario( movie_name = 'test.mp4', adapt = True, enforce_input_cons
                     for k in range( offline_iterations ):        
                         print(f"k:{k}")            
                         success = False                    
-                        while not success:            
+                        while not success:         
+                            robot.params = torch.tensor( params, dtype=torch.float, requires_grad=True )   
                             reward, improve_constraints, maintain_constraints, success = compute_reward(robot, obs1, obs2, robot.params, torch.tensor(dt_outer, dtype=torch.float))
                             grads = constrained_update( reward, maintain_constraints, improve_constraints, robot.params )
                             
@@ -275,7 +277,7 @@ def simulate_scenario( movie_name = 'test.mp4', adapt = True, enforce_input_cons
             
             
 # Run simulations
-fig1, ax1, robot1, rewards1, params1 = simulate_scenario( movie_name = 'si_2d/figures/cs4_case1_rc.mp4', adapt=True, enforce_input_constraints=True, params = [1.0, 3.0, 3.0, 3.0], plot_x_lim = plot_x_lim, plot_y_lim = plot_y_lim, offline = False, offline_iterations=20 )            
+fig1, ax1, robot1, rewards1, params1 = simulate_scenario( movie_name = 'si_2d/figures/cs4_case1_rc.mp4', adapt=True, enforce_input_constraints=True, params = [1.0, 0.8, 1.3, 2.0], plot_x_lim = plot_x_lim, plot_y_lim = plot_y_lim, offline = False, offline_iterations=20 )            
 # fig2, ax2, robot2, rewards2, params2 = simulate_scenario( movie_name = 'si_2d/figures/cs4_case2_rc.mp4', adapt=True, enforce_input_constraints=True, params = [0.5, 0.5, 0.5], plot_x_lim = plot_x_lim, plot_y_lim = plot_y_lim, offline = False, offline_iterations=20 )            
 # fig3, ax3, robot3, rewards3, params3 = simulate_scenario( movie_name = 'si_2d/figures/cs4_case1_offline.mp4', adapt=True, enforce_input_constraints=True, params = [1.0, 3.0, 3.0], plot_x_lim = plot_x_lim, plot_y_lim = plot_y_lim, offline = True, offline_iterations=20 )            
 # fig4, ax4, robot4, rewards4, params4 = simulate_scenario( movie_name = 'si_2d/figures/cs4_case2_offline.mp4', adapt=True, enforce_input_constraints=True, params = [0.5, 0.5, 0.5], plot_x_lim = plot_x_lim, plot_y_lim = plot_y_lim, offline = True, offline_iterations=20 )

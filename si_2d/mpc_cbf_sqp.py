@@ -229,7 +229,8 @@ def simulate_scenario( movie_name = 'test.mp4', adapt = True, enforce_input_cons
                 
                     for k in range(num_gd_iterations):
                         success = False                    
-                        while not success:            
+                        while not success:      
+                            robot.params = torch.tensor( params, dtype=torch.float, requires_grad=True )      
                             reward, improve_constraints, maintain_constraints, success = compute_reward(robot, obs1, obs2, robot.params, torch.tensor(dt_outer, dtype=torch.float))
                             grads = constrained_update( reward, maintain_constraints, improve_constraints, robot.params )
                             
@@ -244,7 +245,8 @@ def simulate_scenario( movie_name = 'test.mp4', adapt = True, enforce_input_cons
                     for k in range( offline_iterations ):        
                         print(f"k:{k}")            
                         success = False                    
-                        while not success:            
+                        while not success:      
+                            robot.params = torch.tensor( params, dtype=torch.float, requires_grad=True )      
                             reward, improve_constraints, maintain_constraints, success = compute_reward(robot, obs1, obs2, robot.params, torch.tensor(dt_outer, dtype=torch.float))
                             grads = constrained_update( reward, maintain_constraints, improve_constraints, robot.params )
                             

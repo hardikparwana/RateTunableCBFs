@@ -16,11 +16,12 @@ X_init = np.array([-0.5,-0.5, 0, 0.1, 0.1, 0, 0.1])
 obsX = np.array([0.7,0.7])
 obsX2 = np.array([1.5,1.9]) #1.5,1.9
 d_obs = 0.3
-goalX = np.array([2.0,2.0])
-u_max_square = 100
+goalX = np.array([2.0,3.0])
+u1_max_square = 5*5
+u2_max_square = 2*2
 
 def step(x,u): # states: x,y,phi,u,v,r
-    V_w = 0.1
+    V_w = 0#0.1
     theta_w = np.pi/3
     m11 = 5.5404
     m22 = 9.6572
@@ -54,7 +55,7 @@ def step_grad(x,u):
     # N_r = -0.0048
     # N_r_r = -0.0089
     
-    V_w = 0.1
+    V_w = 0 #0.1
     theta_w = np.pi/3
     m11 = 5.5404
     m22 = 9.6572
@@ -134,8 +135,8 @@ class mpc():
         # input bounds (N-1)*m
         for i in range(N-1):
             ui = x[(n+m)*i+n:(n+m)*i+n+m]
-            cons = np.append( cons, u_max_square - ui[0]**2 )
-            cons = np.append( cons, u_max_square - ui[1]**2 )
+            cons = np.append( cons, u1_max_square - ui[0]**2 )
+            cons = np.append( cons, u2_max_square - ui[1]**2 )
             
         # state constraints: obstacle at obsX
         for i in range(N): # 2*N constraints
