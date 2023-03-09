@@ -134,7 +134,7 @@ class Unicycle2D:
     def nominal_input(self,G, type, d_min = 0.3):
         G = np.copy(G.reshape(-1,1))
         k_omega = 2.0 #0.5#2.5
-        k_v = 3.0 #2.0 #0.5
+        k_v = 4.0 #2.0 #0.5
         distance = max(np.linalg.norm( self.X[0:2,0]-G[0:2,0] ) - d_min,0)
         theta_d = np.arctan2(G[1,0]-self.X[1,0],G[0,0]-self.X[0,0])
         error_theta = wrap_angle( theta_d - self.X[3,0] )
@@ -144,8 +144,8 @@ class Unicycle2D:
         return np.array([v, omega]).reshape(-1,1)
     
     def sigma(self,s):
-        k1 = 0.5
-        k2 = 4.0
+        k1 = 0.5 # 2.0
+        k2 = 4.0 # 1.0
         return k2 * (np.exp(k1-s)-1)/(np.exp(k1-s)+1)
     
     def sigma_der(self,s):
@@ -165,18 +165,24 @@ class Unicycle2D:
             h = h - self.sigma(s)
             
             der_sigma = self.sigma_der(s)
-            dh_dxi = np.append( np.append(2*( self.X[0:2] - agent.X[0:2] ).T,[[0]], axis=1) - der_sigma * ( np.array([ [np.cos(theta), np.sin(theta), 0] ]) ),  - der_sigma * ( -np.sin(theta)*( self.X[0,0]-agent.X[0,0] ) + np.cos(theta)*( self.X[1,0] - agent.X[1,0] ) ) , axis=1)
+            # dh_dxi = np.append( np.append(2*( self.X[0:2] - agent.X[0:2] ).T,[[0]], axis=1) - der_sigma * ( np.array([ [np.cos(theta), np.sin(theta), 0] ]) ),  - der_sigma * ( -np.sin(theta)*( self.X[0,0]-agent.X[0,0] ) + np.cos(theta)*( self.X[1,0] - agent.X[1,0] ) ) , axis=1)
+            dh_dxi = np.append( 2*( self.X[0:3] - agent.X[0:3] ).T - der_sigma * ( np.array([ [np.cos(theta), np.sin(theta), 0] ]) ),  - der_sigma * ( -np.sin(theta)*( self.X[0,0]-agent.X[0,0] ) + np.cos(theta)*( self.X[1,0] - agent.X[1,0] ) ) , axis=1)
             
             if agent.type=='SingleIntegrator3D':
-                dh_dxj = -2*np.append( ( self.X[0:2] - agent.X[0:2] ).T, [[0]], axis=1 ) + der_sigma * ( np.array([ [np.cos(theta), np.sin(theta), 0] ]) )
+                # dh_dxj = -2*np.append( ( self.X[0:2] - agent.X[0:2] ).T, [[0]], axis=1 ) + der_sigma * ( np.array([ [np.cos(theta), np.sin(theta), 0] ]) )
+                dh_dxj = -2*( self.X[0:3] - agent.X[0:3] ).T + der_sigma * ( np.array([ [np.cos(theta), np.sin(theta), 0] ]) )
             elif agent.type=='SingleIntegrator6D':
-                dh_dxj = np.append( -2*np.append( ( self.X[0:2] - agent.X[0:2] ).T, [[0]], axis=1 ) + der_sigma * ( np.array([ [np.cos(theta), np.sin(theta), 0] ]) ), [[0,0,0]]  , axis=1 )
+                # dh_dxj = np.append( -2*np.append( ( self.X[0:2] - agent.X[0:2] ).T, [[0]], axis=1 ) + der_sigma * ( np.array([ [np.cos(theta), np.sin(theta), 0] ]) ), [[0,0,0]]  , axis=1 )
+                dh_dxj = np.append( -2*( self.X[0:3] - agent.X[0:3] ).T + der_sigma * ( np.array([ [np.cos(theta), np.sin(theta), 0] ]) ), [[0,0,0]]  , axis=1 )
             elif agent.type=='Unicycle2D':
-                dh_dxj = np.append( -2*np.append( ( self.X[0:2] - agent.X[0:2] ).T, [[0]] , axis=1) + der_sigma * ( np.array([ [np.cos(theta), np.sin(theta), 0] ]) ), np.array([[0]]), axis=1 )
+                # dh_dxj = np.append( -2*np.append( ( self.X[0:2] - agent.X[0:2] ).T, [[0]] , axis=1) + der_sigma * ( np.array([ [np.cos(theta), np.sin(theta), 0] ]) ), np.array([[0]]), axis=1 )
+                dh_dxj = np.append( -2*( self.X[0:3] - agent.X[0:3] ).T + der_sigma * ( np.array([ [np.cos(theta), np.sin(theta), 0] ]) ), np.array([[0]]), axis=1 )
             elif agent.type=='DoubleIntegrator3D':
-                dh_dxj = np.append( -2*np.append( ( self.X[0:2] - agent.X[0:2] ).T, [[0]], axis=1 ) + der_sigma * ( np.array([ [np.cos(theta), np.sin(theta), 0] ]) ), [[0,0,0]]  , axis=1 )
+                # dh_dxj = np.append( -2*np.append( ( self.X[0:2] - agent.X[0:2] ).T, [[0]], axis=1 ) + der_sigma * ( np.array([ [np.cos(theta), np.sin(theta), 0] ]) ), [[0,0,0]]  , axis=1 )
+                dh_dxj = np.append( -2*( self.X[0:3] - agent.X[0:3] ).T + der_sigma * ( np.array([ [np.cos(theta), np.sin(theta), 0] ]) ), [[0,0,0]]  , axis=1 )
             else:
-                dh_dxj = -2*np.append( ( self.X[0:2] - agent.X[0:2] ).T, [[0]], axis=1 ) + der_sigma * ( np.array([ [np.cos(theta), np.sin(theta), 0] ]) )
+                # dh_dxj = -2*np.append( ( self.X[0:2] - agent.X[0:2] ).T, [[0]], axis=1 ) + der_sigma * ( np.array([ [np.cos(theta), np.sin(theta), 0] ]) )
+                dh_dxj = -2*( self.X[0:3] - agent.X[0:3] ).T + der_sigma * ( np.array([ [np.cos(theta), np.sin(theta), 0] ]) )
             return h, dh_dxi, dh_dxj
         
         else:

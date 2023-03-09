@@ -33,10 +33,10 @@ class DoubleIntegrator3D:
         self.plot = plot
         self.plot_nominal = nominal_plot
         if self.plot:
-            self.body = ax.scatter([],[],[],c=color,alpha=palpha,s=10)
+            self.body = ax.scatter([],[],[],c=color,alpha=palpha,s=40)
             self.render_plot()
         if self.plot_nominal:
-            self.body_nominal = ax.scatter([],[],[],c=color,alpha=0.3,s=10)
+            self.body_nominal = ax.scatter([],[],[],c=color,alpha=0.3,s=40)
             self.render_plot_nominal()
         self.Xs = np.copy(self.X)
         self.Us = np.copy(self.U)
@@ -165,7 +165,8 @@ class DoubleIntegrator3D:
             
             h2 = h1_dot + self.alpha1[0,agent.id] * h1
             
-            assert(h2>=0)
+            print(f"agent: {agent.id}, h1:{h1}, h2:{h2}")
+            # assert(h2>=0)
             
             dh2_dxi = np.append( 2*(self.X[3:6] - agent.Xdot()[0:3]).T + 2*self.alpha1[0,agent.id]*( self.X[0:3]-agent.X[0:3] ).T,  2*(self.X[0:3] - agent.X[0:3]).T  , axis=1)
             
@@ -195,6 +196,7 @@ class DoubleIntegrator3D:
                 return h2, dh2_dxi, dh2_dxj
         else:
              # it is a surveillance one
+            
             GX = np.copy(agent.X)
             radii = 0
             if self.X[2,0] < GX[2,0]: # lower height than the 
@@ -207,8 +209,8 @@ class DoubleIntegrator3D:
             
             h1_dot = 2*( self.X[0:3] - GX[0:3] ).T @ ( self.X[3:6] - agent.Xdot()[0:3] )
             h2 = h1_dot + self.alpha1[0,agent.id] * h1
-            assert(h2>=0)
-            
+            # assert(h2>=0)
+            print(f"agent: {agent.id}, h1:{h1}, h2:{h2}")
             dh2_dxi = np.append( 2*(self.X[3:6] - agent.Xdot()[0:3]).T + 2*self.alpha1[0,agent.id]*( self.X[0:3]-GX[0:3] ).T,  2*(self.X[0:3] - GX[0:3]).T  , axis=1)
             dh2_dxj = np.append( -2*( self.Xdot()[0:3] - agent.Xdot()[0:3] ).T - 2*self.alpha1[0,agent.id]*( self.X[0:3]-GX[0:3] ).T, [[0, 0, 0]], axis = 1 )
 
@@ -223,7 +225,7 @@ class DoubleIntegrator3D:
         # first level
         A = dh1_dxj
         b = -self.alpha1[0,id] * h1  - dh1_dxi @ self.Xdot() 
-        trust1, asserted = compute_trust( A, b, agent.Xdot(), agent.x_dot_nominal, h1, min_dist, h_min )  
+        trust1, asserted = compute_trust( A, b, agent.Xdot(), agent.x_dot_nominal, h1, 0.3, 10.0)#min_dist, h_min )  
         alpha1_dot = alpha_der_max * trust1 / dt
         
         if not asserted:
@@ -232,7 +234,7 @@ class DoubleIntegrator3D:
         # second level
         A = dh2_dxj #@ robots[j].g()
         b = -self.alpha[0,id] * h2  - dh2_dxi @ ( self.f() + self.g() @ uT ) - alpha1_dot * h1 #- dh_dxj @ robots[j].f() #- dh_dxi @ robots[j].U                    
-        self.trust[0,id], asserted = compute_trust( A, b, agent.Xdot(), agent.x_dot_nominal, h2, min_dist, h_min )  
+        self.trust[0,id], asserted = compute_trust( A, b, agent.Xdot(), agent.x_dot_nominal, h2, 0.7, 15)#min_dist, h_min )  
         alpha2_dot = alpha_der_max * self.trust[0,id] / dt
         
         if not asserted:
@@ -242,6 +244,7 @@ class DoubleIntegrator3D:
         #     print(f"alpha1:{self.alpha1[0,id]}, alpha2:{self.alpha[0,id]}, h1:{h1}, h2:{h2}, h2dot:{dh2_dxi @ ( self.f() + self.g() @ self.U ) + dh2_dxj @ ( agent.Xdot() )}, h2dot_best:{dh2_dxi @ ( self.f() + self.g() @ uT ) + dh2_dxj @ ( agent.Xdot() )}")
         
         # update alphas
+        print(f" id:{self.id}, agent id:{agent.id}, alpha1_dot:{alpha1_dot}, alpha2_dot:{alpha2_dot}, trust1:{trust1}, trust2:{self.trust[0,id]} ")
         self.alpha1[0,id] = self.alpha1[0,id] + alpha1_dot * dt
         self.alpha[0,id] = self.alpha[0,id] + alpha2_dot * dt
         

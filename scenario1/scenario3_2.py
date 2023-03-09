@@ -17,20 +17,21 @@ T = int( tf/dt )
 model_trust = False
 
 # trust parameters
-min_dist = 1.0
-h_min = 1.0
-alpha_der_max = 0.05#0.1
-alpha = 4.0
+min_dist = 0.4#1.0 # important. set separately for double integrator
+h_min = 0.6  # important. 
+# min_dist and h_min are better tuned in 1-1 scenario. Then use the same in multi-agent scenario. usually works fine. each type of agent and barrier function might need different type of tuning
+alpha_der_max = 0.05#0.5#0.1 # very important parameter
+alpha = 0.8  # very important parameter
 
 # figure
 plt.ion()
 fig = plt.figure()#(dpi=100)
 # fig.set_size_inches(33, 15)
-ax = plt.axes(projection ="3d",xlim=(-7,7),ylim=(-7,7), zlim=(-0.01,4.0))   
+ax = plt.axes(projection ="3d",xlim=(-5,5),ylim=(-5,5), zlim=(-0.01,2.0))   
 ax.set_xlabel('X')
 ax.set_ylabel('Y')
 ax.set_zlabel('Z')
-ax.set_box_aspect([1,1,4.0/10])
+ax.set_box_aspect([1,1,2.0/10])
 
 # Set ground plane
 length = 5
@@ -47,26 +48,38 @@ cone_angle = np.pi/6
 height = 2.0
 
 nominal_plot = True
-num_robots = 9
+num_robots = 5
 num_constraints = num_robots - 1
 
-robots.append( Surveillance(np.array([-1.5,1.5,height,0,0,0]), dt, ax, id = 0, cone_length = height/np.cos(cone_angle), cone_angle = cone_angle, mode = 'uncooperative', target=np.array([1,0,0,0,0,0]).reshape(-1,1), num_robots = num_robots, num_constraints = num_constraints) )
-robots.append( Surveillance(np.array([1.5,-1.0,height,0,0,0]), dt, ax, id = 1, cone_length = height/np.cos(cone_angle), cone_angle = cone_angle, mode = 'uncooperative', target = np.array([-1,0,0,0,0,0]).reshape(-1,1), num_robots = num_robots, num_constraints = num_constraints) )
-robots.append( SingleIntegrator3D(np.array([1,1,0]), dt, ax, id = 2, nominal_plot = nominal_plot, alpha = alpha, grounded = True, color = 'g', mode='adversary', target = 5, num_robots = num_robots, num_constraints = num_constraints ) )
-robots.append( SingleIntegrator3D(np.array([2,4,0]), dt, ax, id = 3, nominal_plot = nominal_plot, alpha = alpha, grounded = True, color = 'g', mode='ego', target = np.array([1,0,0]).reshape(-1,1), num_robots = num_robots, num_constraints = num_constraints ) )
-robots.append( SingleIntegrator3D(np.array([-2,-4,0]), dt, ax, id = 4, nominal_plot = nominal_plot, alpha = alpha, grounded = True, color = 'g', mode='ego', target = np.array([1,0,0]).reshape(-1,1), num_robots = num_robots, num_constraints = num_constraints ) )
-robots.append( Unicycle2D( np.array([-1,-1.5,0,0]), dt, ax, id = 5, nominal_plot = nominal_plot, color='b', alpha = alpha, mode='ego', target = np.array([1,0]).reshape(-1,1), num_robots = num_robots, num_constraints = num_constraints) )
-robots[-1].X_nominal = np.array([3, -1,0,0]).reshape(-1,1)
 
-robots.append( Unicycle2D( np.array([4,2,0,np.pi]), dt, ax, id = 6, nominal_plot = nominal_plot, color='b', alpha = alpha, mode='ego', target = np.array([1,0]).reshape(-1,1), num_robots = num_robots, num_constraints = num_constraints ) )
-robots[-1].X_nominal = np.array([1,2,0,np.pi]).reshape(-1,1)
-robots.append( Unicycle2D( np.array([-4,-2,0,np.pi/3]), dt, ax, id = 7, nominal_plot = nominal_plot, color='b', alpha = alpha, mode='ego', target = np.array([1,0]).reshape(-1,1), num_robots = num_robots, num_constraints = num_constraints ) )
-robots.append( DoubleIntegrator3D( np.array([-3,-3,0,0,0,0]), dt, ax, nominal_plot = nominal_plot, id = 8, color='k', alpha = alpha, mode='ego', target = np.array([1.0,0.0,0]).reshape(-1,1), num_robots = num_robots, num_constraints = num_constraints  ) )
+# Adversary
+robots.append( SingleIntegrator3D(np.array([-3,1,0]), dt, ax, id = 0, nominal_plot = nominal_plot, alpha = alpha, grounded = True, color = 'k', mode='adversary', target = 1, num_robots = num_robots, num_constraints = num_constraints ) )
+
+# robots.append( SingleIntegrator3D(np.array([2,4,0]), dt, ax, id = 3, nominal_plot = nominal_plot, alpha = alpha, grounded = True, color = 'g', mode='ego', target = np.array([1,0,0]).reshape(-1,1), num_robots = num_robots, num_constraints = num_constraints ) )
+# robots.append( SingleIntegrator3D(np.array([-1.5,-1.1,1]), dt, ax, id = 4, nominal_plot = nominal_plot, alpha = alpha, grounded = True, color = 'y', mode='ego', target = np.array([1,0,-1]).reshape(-1,1), num_robots = num_robots, num_constraints = num_constraints ) )
+
+robots.append( Unicycle2D( np.array([0,-2,0, np.pi/2]), dt, ax, id = 1, nominal_plot = nominal_plot, color='b', alpha = alpha, mode='ego', target = np.array([1.2,0]).reshape(-1,1), num_robots = num_robots, num_constraints = num_constraints) )
+# robots[-1].X_nominal = np.array([3, -1,0,0]).reshape(-1,1)
+
+robots.append( Unicycle2D( np.array([-1.5,-3,0, np.pi/2]), dt, ax, id = 2, nominal_plot = nominal_plot, color='b', alpha = alpha, mode='ego', target = np.array([1.2,0]).reshape(-1,1), num_robots = num_robots, num_constraints = num_constraints ) )
+# robots[-1].X_nominal = np.array([1,2,0,np.pi]).reshape(-1,1)
+
+# robots.append( Unicycle2D( np.array([1.5,-3,0, np.pi/2]), dt, ax, id = 3, nominal_plot = nominal_plot, color='b', alpha = alpha, mode='ego', target = np.array([1.2,0]).reshape(-1,1), num_robots = num_robots, num_constraints = num_constraints ) )
+
+# Noncooperative
+# robots.append( Surveillance(np.array([-4,4,height,0,0,0]), dt, ax, id = 2, cone_length = height/np.cos(cone_angle), cone_angle = cone_angle, mode = 'uncooperative', target=np.array([1,0,0,0,0,0]).reshape(-1,1), num_robots = num_robots, num_constraints = num_constraints) )
+robots.append( Surveillance(np.array([4,2,height,0,0,0]), dt, ax, id = 3, cone_length = height/np.cos(cone_angle), cone_angle = cone_angle, mode = 'uncooperative', target = np.array([-1,0,0,0,0,0]).reshape(-1,1), num_robots = num_robots, num_constraints = num_constraints) )
+
+# higher order
+robots.append( DoubleIntegrator3D( np.array([-4,-2,0,0,0,0]), dt, ax, nominal_plot = nominal_plot, id = 4, color='g', alpha = alpha, mode='ego', target = np.array([0.6,0.6,0.1]).reshape(-1,1), num_robots = num_robots, num_constraints = num_constraints  ) )
+
+# plt.ioff()
 # plt.show()
 
 # num_robots = len(robots)
 
 ### Controllers
+max_u = 5 
 ### 1. 2 control inputs
 u2 = cp.Variable((2,1))
 u2_ref = cp.Parameter((2,1),value = np.zeros((2,1)) )
@@ -75,6 +88,8 @@ A2 = cp.Parameter((num_constraints2,2),value=np.zeros((num_constraints2,2)))
 b2 = cp.Parameter((num_constraints2,1),value=np.zeros((num_constraints2,1)))
 slack_constraints2 = cp.Parameter( (num_constraints2,1), value = np.zeros((num_constraints2,1)) )
 const2 = [A2 @ u2 >= b2 + slack_constraints2]
+const2 += [ cp.abs( u2[0,0] ) <= max_u ]
+const2 += [ cp.abs( u2[1,0] ) <= max_u ]
 objective2 = cp.Minimize( cp.sum_squares( u2 - u2_ref  ) )
 cbf_controller2 = cp.Problem( objective2, const2 )
 
@@ -86,10 +101,12 @@ A3 = cp.Parameter((num_constraints3,3),value=np.zeros((num_constraints3,3)))
 b3 = cp.Parameter((num_constraints3,1),value=np.zeros((num_constraints3,1)))
 slack_constraints3 = cp.Parameter( (num_constraints3,1), value = np.zeros((num_constraints3,1)) )
 const3 = [A3 @ u3 >= b3 + slack_constraints3]
+const3 += [ cp.abs( u3[0,0] ) <= max_u ]
+const3 += [ cp.abs( u3[1,0] ) <= max_u ]
+const3 += [ cp.abs( u3[2,0] ) <= max_u ]
 objective3 = cp.Minimize( cp.sum_squares( u3 - u3_ref ) )
 cbf_controller3 = cp.Problem( objective3, const3 )
 
-max_u = 10
 ### 3. trust computation for 2: constraints are same
 uT2 = cp.Variable( (2,1) )
 QT2 = cp.Parameter( (1,2), value = np.zeros((1,2)) )
@@ -121,7 +138,7 @@ for t in range(T):
         if robots[i].mode=='uncooperative':
             robots[i].U_nominal = robots[i].target    
         elif robots[i].mode == 'adversary':
-            V, dV_dxi, dV_dxj = robots[i].lyapunov_nominal( robots[robots[i].target].X, robots[robots[i].target].type )
+            V, dV_dxi, dV_dxj = robots[i].lyapunov_nominal( robots[robots[i].target].X_nominal, robots[robots[i].target].type )
             robots[i].U_nominal = -1.5*dV_dxi.T/np.linalg.norm(dV_dxi)
         elif robots[i].mode == 'ego':
             robots[i].U_nominal = robots[i].target
@@ -138,11 +155,11 @@ for t in range(T):
             
         elif robots[i].mode == 'adversary': # only 3D single integrators
             V, dV_dxi, dV_dxj = robots[i].lyapunov( robots[robots[i].target].X, robots[robots[i].target].type  )
-            robots[i].U_ref = - 1.5 * dV_dxi.T / np.linalg.norm( dV_dxi )
+            robots[i].U_ref = - 1.0 * dV_dxi.T / np.linalg.norm( dV_dxi )
         
         elif robots[i].mode == 'ego':  # do our controller
             # get reference control input
-            robots[i].U_ref = robots[i].nominal_input( robots[i].X_nominal, robots[i].type  )/3
+            robots[i].U_ref = robots[i].nominal_input( robots[i].X_nominal, robots[i].type  )#/3
             
             # get constraint matrix            
             for j in range(num_robots):

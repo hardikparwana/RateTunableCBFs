@@ -61,7 +61,7 @@ robots[-1].X_nominal = np.array([3, -1,0,0]).reshape(-1,1)
 robots.append( Unicycle2D( np.array([4,2,0,np.pi]), dt, ax, id = 6, nominal_plot = nominal_plot, color='b', alpha = alpha, mode='ego', target = np.array([1,0]).reshape(-1,1), num_robots = num_robots, num_constraints = num_constraints ) )
 robots[-1].X_nominal = np.array([1,2,0,np.pi]).reshape(-1,1)
 robots.append( Unicycle2D( np.array([-4,-2,0,np.pi/3]), dt, ax, id = 7, nominal_plot = nominal_plot, color='b', alpha = alpha, mode='ego', target = np.array([1,0]).reshape(-1,1), num_robots = num_robots, num_constraints = num_constraints ) )
-robots.append( DoubleIntegrator3D( np.array([-3,-3,0,0,0,0]), dt, ax, nominal_plot = nominal_plot, id = 8, color='k', alpha = alpha, mode='ego', target = np.array([5.0,3.0,1.0]).reshape(-1,1), num_robots = num_robots, num_constraints = num_constraints  ) )
+robots.append( DoubleIntegrator3D( np.array([-3,-3,0,0,0,0]), dt, ax, nominal_plot = nominal_plot, id = 8, color='k', alpha = alpha, mode='ego', target = np.array([5.0,3.0,2.0]).reshape(-1,1), num_robots = num_robots, num_constraints = num_constraints  ) )
 # plt.show()
 
 # num_robots = len(robots)
