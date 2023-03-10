@@ -41,9 +41,6 @@ class Unicycle2D:
             if palpha==1:
                 self.axis_nominal = ax.plot([self.X_nominal[0,0],self.X_nominal[0,0]+self.radii*np.cos(self.X_nominal[3,0])],[self.X_nominal[1,0],self.X_nominal[1,0]+self.radii*np.sin(self.X_nominal[3,0])],[0,0], alpha = 0.3, color=self.color)
             self.render_plot_nominal()
-            
-        self.Xs = np.copy(self.X)
-        self.Us = np.copy(self.U)
         
         # to store constraints
         self.A = np.zeros((num_constraints,2))
@@ -51,10 +48,20 @@ class Unicycle2D:
         self.agent_objective = [0] * num_robots
         self.U_ref = np.array([0,0]).reshape(-1,1)
         self.U_nominal = np.array([0,0]).reshape(-1,1)
+        
         self.alpha = alpha * np.ones((1,num_robots))
         
         # trust
-        self.trust = np.zeros((1,num_robots))
+        self.trust = np.zeros((1,num_robots))       
+        self.h = np.zeros((1,num_robots))
+        
+        # Plot
+        self.Xs = np.copy(self.X)
+        self.Us = np.copy(self.U)
+        self.alphas = np.copy(self.alpha)
+        self.trusts = np.copy(self.trust)
+        self.hs = np.copy(self.h)
+        
         
     def f(self):
         return np.array([0,0,0,0]).reshape(-1,1)
@@ -84,6 +91,10 @@ class Unicycle2D:
         self.render_plot()
         self.Xs = np.append(self.Xs,self.X,axis=1)
         self.Us = np.append(self.Us,self.U,axis=1)
+        self.hs = np.append(self.hs,self.h,axis=0)
+        self.trusts = np.append(self.trusts, self.trust, axis=0)
+        self.alphas = np.append(self.alphas, self.alpha, axis=0)
+        
         return self.X
     
     def step_nominal(self,U): 

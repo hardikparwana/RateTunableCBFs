@@ -39,8 +39,6 @@ class SingleIntegrator3D:
             self.body_nominal = ax.scatter([],[],[],c=color,alpha=0.3,s=10)
             self.render_plot_nominal()
             
-        self.Xs = np.copy(self.X)
-        self.Us = np.copy(self.U)
         
         # to store constraints
         self.A = np.zeros((num_constraints,3))
@@ -52,6 +50,14 @@ class SingleIntegrator3D:
         
         # trust
         self.trust = np.zeros((1,num_robots))
+        self.h = np.zeros((1,num_robots))
+        
+        # plot
+        self.Xs = np.copy(self.X)
+        self.Us = np.copy(self.U)
+        self.alphas = np.copy(self.alpha)
+        self.trusts = np.copy(self.trust)
+        self.hs = np.copy(self.h)
         
     def f(self):
         return np.array([0,0,0]).reshape(-1,1)     
@@ -73,6 +79,9 @@ class SingleIntegrator3D:
         self.render_plot()
         self.Xs = np.append(self.Xs,self.X,axis=1)
         self.Us = np.append(self.Us,self.U,axis=1)
+        self.hs = np.append(self.hs,self.h,axis=0)
+        self.trusts = np.append(self.trusts, self.trust, axis=0)
+        self.alphas = np.append(self.alphas, self.alpha, axis=0)
         return self.X
     
     def step_nominal(self,U): #Just holonomic X,T acceleration

@@ -38,8 +38,6 @@ class DoubleIntegrator3D:
         if self.plot_nominal:
             self.body_nominal = ax.scatter([],[],[],c=color,alpha=0.3,s=40)
             self.render_plot_nominal()
-        self.Xs = np.copy(self.X)
-        self.Us = np.copy(self.U)
         
         # to store constraints
         self.A = np.zeros((num_constraints,3))
@@ -52,6 +50,17 @@ class DoubleIntegrator3D:
         
         # trust
         self.trust = np.zeros((1,num_robots))
+        self.h = np.zeros((1,num_robots))
+        self.h2 = np.zeros((1,num_robots))
+        
+        # plot
+        self.Xs = np.copy(self.X)
+        self.Us = np.copy(self.U)
+        self.alphas = np.copy(self.alpha)
+        self.alpha1s = np.copy(self.alpha)
+        self.trusts = np.copy(self.trust)
+        self.hs = np.copy(self.h)
+        self.h2s = np.copy(self.h2)
         
     def f(self):
         fm = np.zeros((6,1))
@@ -86,6 +95,14 @@ class DoubleIntegrator3D:
         self.render_plot()
         self.Xs = np.append(self.Xs,self.X,axis=1)
         self.Us = np.append(self.Us,self.U,axis=1)
+        
+        self.hs = np.append(self.hs,self.h,axis=0)
+        self.trusts = np.append(self.trusts, self.trust, axis=0)
+        self.alphas = np.append(self.alphas, self.alpha, axis=0)
+        self.h2s = np.append(self.hs,self.h,axis=0)
+        self.trusts = np.append(self.trusts, self.trust, axis=0)
+        self.alpha1s = np.append(self.alpha1s, self.alpha1, axis=0)
+        
         return self.X
     
     def step_nominal(self,U):
@@ -165,7 +182,7 @@ class DoubleIntegrator3D:
             
             h2 = h1_dot + self.alpha1[0,agent.id] * h1
             
-            print(f"agent: {agent.id}, h1:{h1}, h2:{h2}")
+            # print(f"agent: {agent.id}, h1:{h1}, h2:{h2}")
             # assert(h2>=0)
             
             dh2_dxi = np.append( 2*(self.X[3:6] - agent.Xdot()[0:3]).T + 2*self.alpha1[0,agent.id]*( self.X[0:3]-agent.X[0:3] ).T,  2*(self.X[0:3] - agent.X[0:3]).T  , axis=1)
@@ -210,7 +227,7 @@ class DoubleIntegrator3D:
             h1_dot = 2*( self.X[0:3] - GX[0:3] ).T @ ( self.X[3:6] - agent.Xdot()[0:3] )
             h2 = h1_dot + self.alpha1[0,agent.id] * h1
             # assert(h2>=0)
-            print(f"agent: {agent.id}, h1:{h1}, h2:{h2}")
+            # print(f"agent: {agent.id}, h1:{h1}, h2:{h2}")
             dh2_dxi = np.append( 2*(self.X[3:6] - agent.Xdot()[0:3]).T + 2*self.alpha1[0,agent.id]*( self.X[0:3]-GX[0:3] ).T,  2*(self.X[0:3] - GX[0:3]).T  , axis=1)
             dh2_dxj = np.append( -2*( self.Xdot()[0:3] - agent.Xdot()[0:3] ).T - 2*self.alpha1[0,agent.id]*( self.X[0:3]-GX[0:3] ).T, [[0, 0, 0]], axis = 1 )
 
@@ -244,7 +261,7 @@ class DoubleIntegrator3D:
         #     print(f"alpha1:{self.alpha1[0,id]}, alpha2:{self.alpha[0,id]}, h1:{h1}, h2:{h2}, h2dot:{dh2_dxi @ ( self.f() + self.g() @ self.U ) + dh2_dxj @ ( agent.Xdot() )}, h2dot_best:{dh2_dxi @ ( self.f() + self.g() @ uT ) + dh2_dxj @ ( agent.Xdot() )}")
         
         # update alphas
-        print(f" id:{self.id}, agent id:{agent.id}, alpha1_dot:{alpha1_dot}, alpha2_dot:{alpha2_dot}, trust1:{trust1}, trust2:{self.trust[0,id]} ")
+        # print(f" id:{self.id}, agent id:{agent.id}, alpha1_dot:{alpha1_dot}, alpha2_dot:{alpha2_dot}, trust1:{trust1}, trust2:{self.trust[0,id]} ")
         self.alpha1[0,id] = self.alpha1[0,id] + alpha1_dot * dt
         self.alpha[0,id] = self.alpha[0,id] + alpha2_dot * dt
         
