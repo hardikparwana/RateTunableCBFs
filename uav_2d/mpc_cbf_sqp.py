@@ -9,6 +9,9 @@ from utils.utils import *
 from robot_models.uav2DJIT import *
 from robot_models.uav_2d import UAV_2d
 
+# import warnings
+# warnings.filterwarnings("error")
+
 dt_inner = 0.01
 tf = 40
 # N = int( tf/dt_inner )
@@ -18,7 +21,7 @@ outer_loop = 2
 num_gd_iterations = 1
 dt_outer = 0.05
 H = 30#100
-lr_alpha = 0.05#0.05
+lr_alpha = 0.01#0.05
 plot_x_lim = (-1.0,3.5)  
 plot_y_lim = (-0.8,3) 
 
@@ -53,7 +56,7 @@ cbf_controller = cp.Problem( objective, const )
 assert cbf_controller.is_dpp()
 solver_args = {
             'verbose': False,
-            'max_iter': 100000
+            'max_iters': 1000000
         }
 cbf_controller_layer = CvxpyLayer( cbf_controller, parameters=[ u_ref, A1, b1 ], variables = [u, delta] )
 ######################################
@@ -76,11 +79,20 @@ def compute_reward(robot, obs1, obs2, params, dt_outer):
     improve_constraints = []  
     global H
     for i in range(H):
-
+        print(f"FROM loop states:{states[i].T}")
         # make  control matrices
         control_ref = torch.tensor([0,0], dtype=torch.float).reshape(-1,1)
         A, b = traced_uav2D_qp_constraints_jit( states[i], robot.goal_torch, obs1.X_torch, obs2.X_torch, params[0], params[1], params[2], params[3] )
-        control, deltas = cbf_controller_layer( control_ref, A, b )
+        
+        control, deltas = cbf_controller_layer( control_ref, A, b ) #if ( (torch.abs(control[0,0]) > 11) or (torch.abs(control[1,0])>11) ): # print("wrong input: issue with solver")
+        
+        if ( np.abs(control[0,0].detach().numpy())>u1_max ) or ( np.abs(control[1,0].detach().numpy())>u2_max ):
+            print("solved Inaccurate")
+            
+            A, b = uav2D_qp_constraints_jit( states[i], robot.goal_torch, obs1.X_torch, obs2.X_torch, params[0], params[1], params[2], params[3] )
+            
+            return reward, improve_constraints, maintain_constraints, True
+        
         
         # Check for constraints that need to be maintained or kept
         if np.any( deltas[1:].detach().numpy() > 0.01 ):
@@ -88,17 +100,21 @@ def compute_reward(robot, obs1, obs2, params, dt_outer):
             # improve_constraints.append( -b[0] )
             improve_constraints.append( -b[1] )
             improve_constraints.append( -b[2] )     
-            # improve_constraints = []         
+            improve_constraints = []         
             return reward, improve_constraints, maintain_constraints, False
         else:
             temp = A @ control + b + deltas
-            maintain_constraints.append(temp[0] + 0.01)
-            maintain_constraints.append(temp[1] + 0.01)
-            maintain_constraints.append(temp[2] + 0.01)
-            # maintain_constraints = []
+            if torch.abs(temp[0])<1.0:
+                maintain_constraints.append(temp[0] + 0.01)
+            if torch.abs(temp[1])<1.0:
+                maintain_constraints.append(temp[1] + 0.01)
+            if torch.abs(temp[2])<1.0:
+                maintain_constraints.append(temp[2] + 0.01)
+            maintain_constraints = []
                    
         # Get next state
         next_state = update_uav_state_jit( states[i], control, dt_outer )
+        print(f"FROM loop: next_state:{next_state.T}, control:{control.T}")
                 
         # Save next state and compute reward
         states.append( next_state )
@@ -194,7 +210,7 @@ def simulate_scenario( movie_name = 'test.mp4', adapt = True, enforce_input_cons
     with writer.saving(fig, movie_name, 100): 
 
         while (t < tf):
-            print(f"t:{t}")
+            # print(f"t:{t}")
 
             i = i + 1
             
@@ -209,7 +225,7 @@ def simulate_scenario( movie_name = 'test.mp4', adapt = True, enforce_input_cons
                 control_ref = torch.tensor([0,0], dtype=torch.float).reshape(-1,1)
                 A, b = traced_uav2D_qp_constraints_jit( robot.X_torch, robot.goal_torch, obs1.X_torch, obs2.X_torch, torch.tensor(params[0], dtype=torch.float), torch.tensor(params[1], dtype=torch.float), torch.tensor(params[2], dtype=torch.float), torch.tensor(params[3], dtype=torch.float) )
                 control, deltas = cbf_controller_layer( control_ref, A, b )
-                print(f"actual: {control.T}") 
+                print(f"t:{t}, actual: {control.T}") 
                 # print(f"control: {control.T}")
                 robot.step( control.detach().numpy() )
                 robot.render_plot()
@@ -227,7 +243,7 @@ def simulate_scenario( movie_name = 'test.mp4', adapt = True, enforce_input_cons
                     if np.any( deltas[1:].detach().numpy() > 0.1 ):
                         nominal_failed = True
                         print(f"Error, Nominal controller failed: control:{control.T}, delta:{deltas.T}")
-                    print(f"nominal: {control.T}")          
+                    # print(f"nominal: {control.T}")          
                     robot.step_nominal( control.detach().numpy() )
                 
                 fig.canvas.draw()
@@ -243,7 +259,7 @@ def simulate_scenario( movie_name = 'test.mp4', adapt = True, enforce_input_cons
                 if (not offline): 
                 
                     for k in range(num_gd_iterations):
-                        print(f"k:{k}")    
+                        # print(f"k:{k}")    
                         success = False                    
                         while not success:       
                             robot.params = torch.tensor( params, dtype=torch.float, requires_grad=True )     
@@ -260,7 +276,7 @@ def simulate_scenario( movie_name = 'test.mp4', adapt = True, enforce_input_cons
                 else:
                     
                     for k in range( offline_iterations ):        
-                        print(f"k:{k}")            
+                        # print(f"k:{k}")            
                         success = False                    
                         while not success:         
                             robot.params = torch.tensor( params, dtype=torch.float, requires_grad=True )   

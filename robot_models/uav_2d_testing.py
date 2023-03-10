@@ -252,21 +252,34 @@ class UAV_2d:
         
         return V, dV_dx
     
-    def nominal_input(self,G, type, d_min = 0.3):
-        G = np.copy(G.reshape(-1,1))
-        k_omega = 2.0 #0.5#2.5
-        k_v = 3.0 #2.0 #0.5
-        distance = max(np.linalg.norm( self.X[0:2,0]-G[0:2,0] ) - d_min,0)
-        theta_d = np.arctan2(G[1,0]-self.X[1,0],G[0,0]-self.X[0,0])
-        error_theta = wrap_angle( theta_d - self.X[2,0] )
+    # def nominal_input(self,G, type, d_min = 0.3):
+    #     G = np.copy(G.reshape(-1,1))
+    #     k_omega = 2.0 #0.5#2.5
+    #     k_v = 3.0 #2.0 #0.5
+    #     distance = max(np.linalg.norm( self.X[0:2,0]-G[0:2,0] ) - d_min,0)
+    #     theta_d = np.arctan2(G[1,0]-self.X[1,0],G[0,0]-self.X[0,0])
+    #     error_theta = wrap_angle( theta_d - self.X[2,0] )
 
-        omega = k_omega*error_theta   
-        v = k_v*( distance )*np.cos( error_theta )
-        return np.array([v, omega]).reshape(-1,1)
+    #     omega = k_omega*error_theta   
+    #     v = k_v*( distance )*np.cos( error_theta )
+    #     return np.array([v, omega]).reshape(-1,1)
     
-    # def nominal_input(self,target):
-    #     phi = self.X[2,0]
-    #     los = 
+    def nominal_input(self,target):
+        phi = self.X[2,0]
+        ui =  self.X[3,0]
+        los = self.X[0:2] - target[0:2]
+        los = los / np.linalg.norm(los)
+        los_angle = np.arctan2( self.X[1,0]-target[1,0], self.X[0,0]-target[0,0] )
+        error_angle = los_angle - phi
+        if error_angle > np.pi:
+            error_angle = error_angle - 2*np.pi
+        if error_angle < -np.pi:
+            error_angle = error_angle + 2*np.pi
+        tau_r = -5.0 * ( error_angle )
+        tau_u = 10.0 * ( 0.5 - ui ) * np.sign( -los[0,0]*np.cos(phi) -los[1,0]*np.sin(phi) )
+        return np.array([ tau_u, tau_r ]).reshape(-1,1)
+        
+        
        
     def agent_barrier(self, agent, d_min):
         
@@ -347,7 +360,7 @@ class UAV_2d:
         return h3, dh3_dx
 
 
-if 0:
+if 1:
     plt.ion()
     fig = plt.figure()
     ax = plt.axes( xlim = (-2,2), ylim = (-2,2) )
@@ -362,7 +375,7 @@ if 0:
     robot = UAV_2d( np.array([0,0,0,0.1,0.1,0,0.1]).reshape(-1,1), dt, ax, alpha1 = 2.0, alpha2 = 2.0 )
     obsX = [0.5, 0.5]
     obs2X = [1.5, 1.9]
-    targetX = np.array([1, 1]).reshape(-1,1)
+    targetX = np.array([0.3, 0.3]).reshape(-1,1)
     d_min = 0.3
     obs1 = circle2D(obsX[0], obsX[1], d_min, ax, 0)
     obs2 = circle2D(obs2X[0], obs2X[1], d_min, ax, 0)
@@ -378,8 +391,8 @@ if 0:
     objective = cp.Minimize( cp.sum_squares( u - u_ref ) + 10 * cp.sum_squares( delta[0,0] ) + 100000 * cp.sum_squares(delta[1:,:]) ) 
     # factor_matrix = np.zeros((num_constraints,1)); factor_matrix[0,0] = 1
     const = [A1 @ u + b1 + delta >= 0]
-    const += [ cp.abs( u[0,0] ) <= 5 ]
-    const += [ cp.abs( u[1,0] ) <= 2.0 ]
+    const += [ cp.abs( u[0,0] ) <= 50.0 ] #5
+    const += [ cp.abs( u[1,0] ) <= 50.0 ] # 2.0
     cbf_controller = cp.Problem( objective, const )
     
     for i in range(num_steps):
@@ -387,12 +400,12 @@ if 0:
         h3, dh3_dx = robot.agent_barrier( obs1, d_min )
         h4, dh4_dx = robot.agent_barrier( obs2, d_min )
         V, dV_dx = robot.lyapunov( targetX )
-        # u_ref.value = robot.mominal_input( targetX )
+        u_ref.value = robot.nominal_input( targetX )
         # print(f"V:{V}, dV_dx:{dV_dx}")
         A1.value[0,:] = 1.0*(-dV_dx @ robot.g())
-        A1.value[1,:] = 1.0*(dh3_dx @ robot.g())
+        A1.value[1,:] = 0.0*(dh3_dx @ robot.g())
         b1.value[0,:] = 1.0*(-dV_dx @ robot.f() - 1.0 * V )
-        b1.value[1,:] = 1.0*(dh3_dx @ robot.f() + alpha3 * h3)
+        b1.value[1,:] = 0.0*(dh3_dx @ robot.f() + alpha3 * h3)
         cbf_controller.solve(solver=cp.GUROBI, reoptimize=True)
         
         if cbf_controller.status!='optimal':

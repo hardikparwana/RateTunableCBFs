@@ -43,8 +43,10 @@ def uav_g_torch_jit(x):
 def update_uav_state_jit( state, control, dt ):
     f = uav_f_torch_jit(state)
     g = uav_g_torch_jit(state)
-    return state + ( f + g @ control ) * dt
-traced_update_si_state_jit = torch.jit.trace( update_uav_state_jit, ( torch.ones(7,1, dtype=torch.float), torch.ones(2,1, dtype=torch.float), torch.tensor(0.5, dtype=torch.float) ) )
+    next_state = state + ( f + g @ control ) * dt
+    print(f"state:{state.T}, next_state:{next_state.T}, f:{f.T}")
+    return next_state
+traced_update_si_state_jit = update_uav_state_jit#torch.jit.trace( update_uav_state_jit, ( torch.ones(7,1, dtype=torch.float), torch.ones(2,1, dtype=torch.float), torch.tensor(0.5, dtype=torch.float) ) )
 
 # @torch.jit.script
 # def uav2D_lyapunov_jit(X, G, min_D = torch.tensor(0.3, dtype=torch.float), max_D = torch.tensor(2.0, dtype=torch.float)):   
