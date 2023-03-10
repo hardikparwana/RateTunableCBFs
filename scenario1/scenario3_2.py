@@ -15,6 +15,7 @@ tf = 9
 d_min = 0.3
 T = int( tf/dt )
 model_trust = True
+fixed_parameter = True
 
 # trust parameters
 min_dist = 0.4#1.0 # important. set separately for double integrator
@@ -55,27 +56,37 @@ num_constraints = num_robots - 1
 # Adversary
 robots.append( SingleIntegrator3D(np.array([-3,1,0]), dt, ax, id = 0, nominal_plot = nominal_plot, alpha = alpha, grounded = True, color = 'k', mode='adversary', target = 1, num_robots = num_robots, num_constraints = num_constraints ) )
 
-# robots.append( SingleIntegrator3D(np.array([2,4,0]), dt, ax, id = 3, nominal_plot = nominal_plot, alpha = alpha, grounded = True, color = 'g', mode='ego', target = np.array([1,0,0]).reshape(-1,1), num_robots = num_robots, num_constraints = num_constraints ) )
-# robots.append( SingleIntegrator3D(np.array([-1.5,-1.1,1]), dt, ax, id = 4, nominal_plot = nominal_plot, alpha = alpha, grounded = True, color = 'y', mode='ego', target = np.array([1,0,-1]).reshape(-1,1), num_robots = num_robots, num_constraints = num_constraints ) )
-
+# Ego
 robots.append( Unicycle2D( np.array([0,-2,0, np.pi/2]), dt, ax, id = 1, nominal_plot = nominal_plot, color='b', alpha = alpha, mode='ego', target = np.array([1.2,0]).reshape(-1,1), num_robots = num_robots, num_constraints = num_constraints) )
-# robots[-1].X_nominal = np.array([3, -1,0,0]).reshape(-1,1)
-
 robots.append( Unicycle2D( np.array([-1.5,-3,0, np.pi/2]), dt, ax, id = 2, nominal_plot = nominal_plot, color='b', alpha = alpha, mode='ego', target = np.array([1.2,0]).reshape(-1,1), num_robots = num_robots, num_constraints = num_constraints ) )
-# robots[-1].X_nominal = np.array([1,2,0,np.pi]).reshape(-1,1)
-
-# robots.append( Unicycle2D( np.array([1.5,-3,0, np.pi/2]), dt, ax, id = 3, nominal_plot = nominal_plot, color='b', alpha = alpha, mode='ego', target = np.array([1.2,0]).reshape(-1,1), num_robots = num_robots, num_constraints = num_constraints ) )
 
 # Noncooperative
-# robots.append( Surveillance(np.array([-4,4,height,0,0,0]), dt, ax, id = 2, cone_length = height/np.cos(cone_angle), cone_angle = cone_angle, mode = 'uncooperative', target=np.array([1,0,0,0,0,0]).reshape(-1,1), num_robots = num_robots, num_constraints = num_constraints) )
 robots.append( Surveillance(np.array([4,2,height,0,0,0]), dt, ax, id = 3, cone_length = height/np.cos(cone_angle), cone_angle = cone_angle, mode = 'uncooperative', target = np.array([-1,0,0,0,0,0]).reshape(-1,1), num_robots = num_robots, num_constraints = num_constraints) )
 
-# higher order
+# higher order ego
 robots.append( DoubleIntegrator3D( np.array([-4,-2,0,0,0,0]), dt, ax, nominal_plot = nominal_plot, id = 4, color='g', alpha = alpha, mode='ego', target = np.array([0.6,0.6,0.1]).reshape(-1,1), num_robots = num_robots, num_constraints = num_constraints  ) )
 robots.append( DoubleIntegrator3D( np.array([-4,2.2,0.5,0,0,0]), dt, ax, nominal_plot = nominal_plot, id = 4, color='g', alpha = alpha, mode='ego', target = np.array([0.6,0.0,0.0]).reshape(-1,1), num_robots = num_robots, num_constraints = num_constraints  ) )
 
 # plt.ioff()
 # plt.show()
+
+# Fixed parameter
+robots_fixed = []
+nominal_plot = False
+robots_fixed.append( SingleIntegrator3D(np.array([-3,1,0]), dt, ax, id = 0, nominal_plot = nominal_plot, alpha = alpha, grounded = True, color = 'k', mode='adversary', target = 1, num_robots = num_robots, num_constraints = num_constraints ) )
+
+# Ego
+robots_fixed.append( Unicycle2D( np.array([0,-2,0, np.pi/2]), dt, ax, id = 1, nominal_plot = nominal_plot, color='b', alpha = alpha, mode='ego', target = np.array([1.2,0]).reshape(-1,1), num_robots = num_robots, num_constraints = num_constraints) )
+robots_fixed.append( Unicycle2D( np.array([-1.5,-3,0, np.pi/2]), dt, ax, id = 2, nominal_plot = nominal_plot, color='b', alpha = alpha, mode='ego', target = np.array([1.2,0]).reshape(-1,1), num_robots = num_robots, num_constraints = num_constraints ) )
+
+# Noncooperative
+robots_fixed.append( Surveillance(np.array([4,2,height,0,0,0]), dt, ax, id = 3, cone_length = height/np.cos(cone_angle), cone_angle = cone_angle, mode = 'uncooperative', target = np.array([-1,0,0,0,0,0]).reshape(-1,1), num_robots = num_robots, num_constraints = num_constraints) )
+
+# higher order ego
+robots_fixed.append( DoubleIntegrator3D( np.array([-4,-2,0,0,0,0]), dt, ax, nominal_plot = nominal_plot, id = 4, color='g', alpha = alpha, mode='ego', target = np.array([0.6,0.6,0.1]).reshape(-1,1), num_robots = num_robots, num_constraints = num_constraints  ) )
+robots_fixed.append( DoubleIntegrator3D( np.array([-4,2.2,0.5,0,0,0]), dt, ax, nominal_plot = nominal_plot, id = 4, color='g', alpha = alpha, mode='ego', target = np.array([0.6,0.0,0.0]).reshape(-1,1), num_robots = num_robots, num_constraints = num_constraints  ) )
+
+
 
 # num_robots = len(robots)
 
@@ -145,6 +156,30 @@ for t in range(T):
             robots[i].U_nominal = robots[i].target
         robots[i].step_nominal(robots[i].U_nominal)
         robots[i].x_dot_nominal = robots[i].f() + robots[i].g() @ np.copy(robots[i].U)
+        
+    # Fixed parameter
+    if fixed_parameter:
+        for i in range(num_robots):
+            
+            if robots_fixed[i].mode=='uncooperative':
+                robots_fixed[i].U_nominal = robots_fixed[i].target    
+            elif robots_fixed[i].mode == 'adversary':
+                V, dV_dxi, dV_dxj = robots_fixed[i].lyapunov_nominal( robots_fixed[robots_fixed[i].target].X_nominal, robots_fixed[robots_fixed[i].target].type )
+                robots_fixed[i].U_nominal = -1.0*dV_dxi.T/np.linalg.norm(dV_dxi)
+            elif robots_fixed[i].mode == 'ego':
+                robots_fixed[i].U_nominal = robots_fixed[i].target
+            robots_fixed[i].step_nominal(robots_fixed[i].U_nominal)
+            robots_fixed[i].x_dot_nominal = robots_fixed[i].f() + robots_fixed[i].g() @ np.copy(robots_fixed[i].U)
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    ################################
     
     # actual agents: nominal input + make constraint matrix
     for i in range(num_robots):
@@ -181,6 +216,34 @@ for t in range(T):
                 
                 #Plot
                 robots[i].h[0,j] = h
+                
+    if fixed_parameter:
+        # actual agents: nominal input + make constraint matrix
+        for i in range(num_robots):
+            
+            const_index = 0        
+            if robots_fixed[i].mode == 'uncooperative': # only velocity commands: do nominal directly
+                robots_fixed[i].U_ref = robots_fixed[i].target;            
+            elif robots_fixed[i].mode == 'adversary': # only 3D single integrators
+                V, dV_dxi, dV_dxj = robots_fixed[i].lyapunov( robots_fixed[robots_fixed[i].target].X, robots_fixed[robots_fixed[i].target].type  )
+                robots_fixed[i].U_ref = - 1.0 * dV_dxi.T / np.linalg.norm( dV_dxi )        
+            elif robots_fixed[i].mode == 'ego':  # do our controller
+                # get reference control input
+                robots_fixed[i].U_ref = robots_fixed[i].nominal_input( robots_fixed[i].X_nominal, robots_fixed[i].type  )#/3            
+                # get constraint matrix            
+                for j in range(num_robots):
+                    if j==i:
+                        continue                
+                    # safety constraint
+                    h, dh_dxi, dh_dxj = robots_fixed[i].agent_barrier(robots_fixed[j], d_min)                
+                    # Inequality constraint
+                    robots_fixed[i].A[const_index,:] = dh_dxi @ robots_fixed[i].g()
+                    robots_fixed[i].b[const_index] = - dh_dxi @ robots_fixed[i].f() - robots_fixed[i].alpha[0,j] * h - dh_dxj @ ( robots_fixed[j].f() + robots_fixed[j].g() @ robots_fixed[j].U )    
+                    # Best case LP objective
+                    robots_fixed[i].agent_objective[j] = dh_dxi @ robots_fixed[i].g() # h positive                
+                    const_index += 1                
+                    #Plot
+                    robots_fixed[i].h[0,j] = h
                 
     
     # get trust factor
@@ -255,13 +318,35 @@ for t in range(T):
                     print("Error: QP not feasible")
                 robots[i].step( u3.value )
         robots[i].render_plot()
+        
+        
+    if fixed_parameter:
+        # implement control input
+        for i in range(num_robots):
             
-    # store data for plotting
-    # for i in range(num_robots):
-    #     if robots[i].mode == 'ego':
-    #         robots[j].alphas = np.append( robots[j].alphas, robots[j].alpha, axis=0 )
-    #         robots[j].trusts = np.append( robots[j].trusts, robots[j].trust, axis=0 )
-    #         robots[j].hs = np.append( robots[j].hs, robots[j].h, axis=0 )           
+            if robots_fixed[i].mode == 'uncooperative' or robots_fixed[i].mode == 'adversary':
+                robots_fixed[i].step( robots_fixed[i].U_ref )
+            elif robots_fixed[i].mode == 'ego':
+                if robots_fixed[i].U.shape[0] == 2:
+                    u2_ref.value = robots_fixed[i].U_ref
+                    A2.value = robots_fixed[i].A
+                    b2.value = robots_fixed[i].b
+                    cbf_controller2.solve(solver=cp.GUROBI, reoptimize=True)
+                    if cbf_controller2.status != 'optimal':
+                        print("Error: QP not feasible")
+                    robots_fixed[i].step( u2.value )
+                elif robots_fixed[i].U.shape[0] == 3:
+                    u3_ref.value = robots_fixed[i].U_ref
+                    A3.value = robots_fixed[i].A
+                    b3.value = robots_fixed[i].b
+                    cbf_controller3.solve(solver=cp.GUROBI, reoptimize=True)
+                    if cbf_controller3.status != 'optimal':
+                        print("Error: QP not feasible")
+                    robots_fixed[i].step( u3.value )
+            # robots_fixed[i].render_plot()
+        
+            
+      
     
     fig.canvas.draw()
     fig.canvas.flush_events()
@@ -278,6 +363,7 @@ axis1.plot( indexes, robots[idx].hs[:,0], label='h_{21}' )
 axis1.plot( indexes, robots[idx].hs[:,2], label='h_{23}' )
 axis1.plot( indexes, robots[idx].hs[:,3], label='h_{24}' )
 axis1.plot( indexes, robots[idx].hs[:,4], label='h_{25}' )
+axis1.plot( indexes, robots[idx].hs[:,5], label='h_{26}' )
 axis1.legend()
 
 figure2, axis2 = plt.subplots(1, 1)
@@ -289,6 +375,7 @@ axis2.plot( indexes, robots[idx].hs[:,1], label='h_{32}' )
 # axis1.plot( indexes, robots[idx].hs[:,2], label='h_{23}' )
 axis2.plot( indexes, robots[idx].hs[:,3], label='h_{34}' )
 axis2.plot( indexes, robots[idx].hs[:,4], label='h_{35}' )
+axis2.plot( indexes, robots[idx].hs[:,5], label='h_{36}' )
 axis2.legend()
 
 figure3, axis3 = plt.subplots(1, 1)
@@ -300,45 +387,69 @@ axis3.plot( indexes, robots[idx].hs[:,1], label='h_{51}' )
 axis3.plot( indexes, robots[idx].hs[:,2], label='h_{53}' )
 axis3.plot( indexes, robots[idx].hs[:,3], label='h_{54}' )
 # axis3.plot( indexes, robots[idx].hs[:,4], label='h_{55}' )
+axis3.plot( indexes, robots[idx].hs[:,5], label='h_{56}' )
 axis3.legend()
 
-# alphas
 figure4, axis4 = plt.subplots(1, 1)
+idx = 5
+size = np.shape(robots[idx].hs)[0]
+indexes = np.linspace(0,tf,size)
+axis4.plot( indexes, robots[idx].hs[:,0], label='h_{61}' )
+axis4.plot( indexes, robots[idx].hs[:,1], label='h_{61}' )
+axis4.plot( indexes, robots[idx].hs[:,2], label='h_{63}' )
+axis4.plot( indexes, robots[idx].hs[:,3], label='h_{64}' )
+axis4.plot( indexes, robots[idx].hs[:,4], label='h_{65}' )
+axis4.legend()
+
+# alphas
+figure5, axis5 = plt.subplots(1, 1)
 idx = 1
 size = np.shape(robots[idx].alphas)[0]
 indexes = np.linspace(0,tf,size)
-axis1.plot( indexes, robots[idx].alphas[:,0], label=r'$\alpha_{21}$' )
-# axis1.plot( indexes, robots[idx].alphas[:,1] )
-axis1.plot( indexes, robots[idx].alphas[:,2], label=r'$\alpha_{23}$' )
-axis1.plot( indexes, robots[idx].alphas[:,3], label=r'$\alpha_{24}$' )
-axis1.plot( indexes, robots[idx].alphas[:,4], label=r'$\alpha_{25}$' )
-axis1.legend()
+axis5.plot( indexes, robots[idx].alphas[:,0], label=r'$\alpha_{21}$' )
+axis5.plot( indexes, robots[idx].alphas[:,2], label=r'$\alpha_{23}$' )
+axis5.plot( indexes, robots[idx].alphas[:,3], label=r'$\alpha_{24}$' )
+axis5.plot( indexes, robots[idx].alphas[:,4], label=r'$\alpha_{25}$' )
+axis5.plot( indexes, robots[idx].alphas[:,5], label=r'$\alpha_{26}$' )
+axis5.legend()
 
-figure5, axis5 = plt.subplots(1, 1)
+figure6, axis6 = plt.subplots(1, 1)
 idx = 2
 size = np.shape(robots[idx].alphas)[0]
 indexes = np.linspace(0,tf,size)
-axis2.plot( indexes, robots[idx].alphas[:,0], label=r'$\alpha_{31}$' )
-axis2.plot( indexes, robots[idx].alphas[:,1], label=r'$\alpha_{32}$' )
-# axis1.plot( indexes, robots[idx].alphas[:,2], label='h_{23}' )
-axis2.plot( indexes, robots[idx].alphas[:,3], label=r'$\alpha_{34}$' )
-axis2.plot( indexes, robots[idx].alphas[:,4], label=r'$\alpha_{35}$' )
-axis2.legend()
+axis6.plot( indexes, robots[idx].alphas[:,0], label=r'$\alpha_{31}$' )
+axis6.plot( indexes, robots[idx].alphas[:,1], label=r'$\alpha_{32}$' )
+axis6.plot( indexes, robots[idx].alphas[:,3], label=r'$\alpha_{34}$' )
+axis6.plot( indexes, robots[idx].alphas[:,4], label=r'$\alpha_{35}$' )
+axis6.plot( indexes, robots[idx].alphas[:,5], label=r'$\alpha_{36}$' )
+axis6.legend()
 
-figure6, axis6 = plt.subplots(1, 1)
+figure7, axis7 = plt.subplots(1, 1)
 idx = 4
 size = np.shape(robots[idx].alphas)[0]
 indexes = np.linspace(0,tf,size)
-axis3.plot( indexes, robots[idx].alphas[:,0], label=r'$\alpha_{51}$' )
-axis3.plot( indexes, robots[idx].alphas[:,1], label=r'$\alpha_{51}$' )
-axis3.plot( indexes, robots[idx].alphas[:,2], label=r'$\alpha_{53}$' )
-axis3.plot( indexes, robots[idx].alphas[:,3], label=r'$\alpha_{54}$' )
-# axis3.plot( indexes, robots[idx].alphas[:,4], label='h_{55}' )
-axis3.legend()
+axis7.plot( indexes, robots[idx].alphas[:,0], label=r'$\alpha_{51}$' )
+axis7.plot( indexes, robots[idx].alphas[:,1], label=r'$\alpha_{51}$' )
+axis7.plot( indexes, robots[idx].alphas[:,2], label=r'$\alpha_{53}$' )
+axis7.plot( indexes, robots[idx].alphas[:,3], label=r'$\alpha_{54}$' )
+axis7.plot( indexes, robots[idx].alphas[:,5], label=r'$\alpha_{56}$' )
+axis7.legend()
 
+figure8, axis8 = plt.subplots(1, 1)
+idx = 5
+size = np.shape(robots[idx].alphas)[0]
+indexes = np.linspace(0,tf,size)
+axis8.plot( indexes, robots[idx].alphas[:,0], label=r'$\alpha_{61}$' )
+axis8.plot( indexes, robots[idx].alphas[:,1], label=r'$\alpha_{61}$' )
+axis8.plot( indexes, robots[idx].alphas[:,2], label=r'$\alpha_{63}$' )
+axis8.plot( indexes, robots[idx].alphas[:,3], label=r'$\alpha_{64}$' )
+axis8.plot( indexes, robots[idx].alphas[:,4], label=r'$\alpha_{65}$' )
+axis8.legend()
 
-figure7, axis7 = plt.subplots(1, 1)
-axis7 = plt.axes(projection ="3d",xlim=(-5,6),ylim=(-5,5), zlim=(-0.01,2.0))   
+# Trajectory Plot
+
+figure9, axis9 = plt.subplots(1, 1)
+axis9 = plt.axes(projection ="3d",xlim=(-4.5,6),ylim=(-3,5), zlim=(-0.01,2.0))   
 size = np.shape(robots[0].Xs)[1]-1
 indexes = np.linspace(0,tf,size)
 
@@ -352,20 +463,28 @@ indexes = indexes/np.max(indexes)
 # ax.set_ylabel("Y")
 
 cc = np.tan(np.asarray(indexes))
-im1 = axis7.scatter( robots[0].Xs[0,1:], robots[0].Xs[1,1:], robots[0].Xs[2,1:],c=cc, cmap = 'CMRmap' )
-im2 = axis7.scatter( robots[1].Xs[0,1:], robots[1].Xs[1,1:], robots[1].Xs[2,1:], c=cc )
-axis7.scatter( robots[2].Xs[0,1:], robots[2].Xs[1,1:], robots[2].Xs[2,1:], c=cc )
-axis7.scatter( robots[3].Xs[0,1:], robots[3].Xs[1,1:], robots[3].Xs[2,1:], c=cc, cmap = 'CMRmap' )
-axis7.scatter( robots[4].Xs[0,1:], robots[4].Xs[1,1:], robots[4].Xs[2,1:], c=cc )
-axis7.scatter( robots[5].Xs[0,1:], robots[5].Xs[1,1:], robots[5].Xs[2,1:], c=cc )
+im1 = axis9.scatter( robots[0].Xs[0,1:], robots[0].Xs[1,1:], robots[0].Xs[2,1:],c=cc, cmap = 'CMRmap' )
+im2 = axis9.scatter( robots[1].Xs[0,1:], robots[1].Xs[1,1:], robots[1].Xs[2,1:], c=cc )
+axis9.scatter( robots[2].Xs[0,1:], robots[2].Xs[1,1:], robots[2].Xs[2,1:], c=cc )
+axis9.scatter( robots[3].Xs[0,1:], robots[3].Xs[1,1:], robots[3].Xs[2,1:], c=cc, cmap = 'CMRmap' )
+axis9.scatter( robots[4].Xs[0,1:], robots[4].Xs[1,1:], robots[4].Xs[2,1:], c=cc )
+axis9.scatter( robots[5].Xs[0,1:], robots[5].Xs[1,1:], robots[5].Xs[2,1:], c=cc )
 
-robots.append( Surveillance(np.array([4,2,height,0,0,0]), dt, axis7, id = 3, cone_length = height/np.cos(cone_angle), cone_angle = cone_angle, mode = 'uncooperative', target = np.array([-1,0,0,0,0,0]).reshape(-1,1), num_robots = num_robots, num_constraints = num_constraints) )
+robots.append( Surveillance(np.array([4,2,height,0,0,0]), dt, axis9, id = 3, cone_length = height/np.cos(cone_angle), cone_angle = cone_angle, mode = 'uncooperative', target = np.array([-1,0,0,0,0,0]).reshape(-1,1), num_robots = num_robots, num_constraints = num_constraints) )
 
 # im2 = axis7.scatter( greedy[0].Xs[0,1:], greedy[0].Xs[1,1:],c=cc, cmap = 'CMRmap' )
 # axis7.scatter( greedy_default[0].Xs[0,1:], greedy_default[0].Xs[1,1:],c=cc, cmap = 'CMRmap',alpha=0.1 )
 
-figure7.colorbar(im1, ax=axis7)
-figure7.colorbar(im2, ax=axis7)
+figure9.colorbar(im1, ax=axis9)
+figure9.colorbar(im2, ax=axis9)
+
+if fixed_parameter:
+    axis9.scatter( robots_fixed[0].Xs[0,1:], robots_fixed[0].Xs[1,1:], robots_fixed[0].Xs[2,1:],c=cc, cmap = 'CMRmap', alpha=0.1 )
+    axis9.scatter( robots_fixed[1].Xs[0,1:], robots_fixed[1].Xs[1,1:], robots_fixed[1].Xs[2,1:], c=cc, alpha=0.1 )
+    axis9.scatter( robots_fixed[2].Xs[0,1:], robots_fixed[2].Xs[1,1:], robots_fixed[2].Xs[2,1:], c=cc, alpha=0.1 )
+    axis9.scatter( robots_fixed[3].Xs[0,1:], robots_fixed[3].Xs[1,1:], robots_fixed[3].Xs[2,1:], c=cc, cmap = 'CMRmap', alpha=0.1 )
+    axis9.scatter( robots_fixed[4].Xs[0,1:], robots_fixed[4].Xs[1,1:], robots_fixed[4].Xs[2,1:], c=cc, alpha=0.1 )
+    axis9.scatter( robots_fixed[5].Xs[0,1:], robots_fixed[5].Xs[1,1:], robots_fixed[5].Xs[2,1:], c=cc, alpha=0.1 )
 
 # if save_plot:
 #     figure4.savefig("trajectory.eps", dpi=50, rasterized=True)

@@ -88,7 +88,7 @@ class Unicycle2D:
         self.U = U.reshape(-1,1)
         self.X = self.X + ( self.f() + self.g() @ self.U )*self.dt
         self.X[3,0] = wrap_angle(self.X[3,0])
-        self.render_plot()
+        # self.render_plot()
         self.Xs = np.append(self.Xs,self.X,axis=1)
         self.Us = np.append(self.Us,self.U,axis=1)
         self.hs = np.append(self.hs,self.h,axis=0)

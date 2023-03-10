@@ -74,7 +74,7 @@ class Surveillance:
 
         self.U = U.reshape(-1,1)
         self.X = self.X + ( self.f() + self.g() @ self.U )*self.dt
-        self.render_plot()
+        # self.render_plot()
         self.Xs = np.append(self.Xs,self.X,axis=1)
         self.Us = np.append(self.Us,self.U,axis=1)
         return self.X
@@ -82,7 +82,7 @@ class Surveillance:
     def step_nominal(self,U): #Just holonomic X,T acceleration
         self.U_nominal = U.reshape(-1,1)
         self.X_nominal = self.X_nominal + ( self.f() + self.g() @ self.U_nominal )*self.dt
-        self.render_plot_nominal()
+        # self.render_plot_nominal()
         return self.X_nominal
     
     def Xdot(self):

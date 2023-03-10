@@ -92,7 +92,7 @@ class DoubleIntegrator3D:
 
         self.U = U.reshape(-1,1)
         self.X = self.X + ( self.f() + self.g() @ self.U )*self.dt
-        self.render_plot()
+        # self.render_plot()
         self.Xs = np.append(self.Xs,self.X,axis=1)
         self.Us = np.append(self.Us,self.U,axis=1)
         
