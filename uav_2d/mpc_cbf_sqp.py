@@ -16,8 +16,8 @@ tf = 40
 # tf =  int( N * dt_inner ) #20
 outer_loop = 2
 num_gd_iterations = 1
-dt_outer = 0.01
-H = 60#100
+dt_outer = 0.05
+H = 30#100
 lr_alpha = 0.05#0.05
 plot_x_lim = (-1.0,3.5)  
 plot_y_lim = (-0.8,3) 
@@ -85,12 +85,17 @@ def compute_reward(robot, obs1, obs2, params, dt_outer):
         # Check for constraints that need to be maintained or kept
         if np.any( deltas[1:].detach().numpy() > 0.01 ):
             print(f"Error, control:{control.T}, delta:{deltas.T}")
-        #     # if improve_constraints == []:
-        #     #     improve_constraints = 
-        #     improve_constraints = torch.cat( improve_constraints )
-        #     return reward, improve_constraints, maintain_constraints, False
-        # else:
-        #     maintain_constraints = torch.cat( (maintain_constraints, A @ control), dim=0 )
+            # improve_constraints.append( -b[0] )
+            improve_constraints.append( -b[1] )
+            improve_constraints.append( -b[2] )     
+            # improve_constraints = []         
+            return reward, improve_constraints, maintain_constraints, False
+        else:
+            temp = A @ control + b + deltas
+            maintain_constraints.append(temp[0] + 0.01)
+            maintain_constraints.append(temp[1] + 0.01)
+            maintain_constraints.append(temp[2] + 0.01)
+            # maintain_constraints = []
                    
         # Get next state
         next_state = update_uav_state_jit( states[i], control, dt_outer )
@@ -103,7 +108,7 @@ def compute_reward(robot, obs1, obs2, params, dt_outer):
 
 def constrained_update( objective, maintain_constraints, improve_constraints, params ) :
     
-    num_params = len(params)
+    num_params = params.shape[0]
     d = cp.Variable((num_params,1))
     
     # Get Performance optimal direction
@@ -112,7 +117,7 @@ def constrained_update( objective, maintain_constraints, improve_constraints, pa
     objective_grad = param_grad.reshape(1,-1)
     
     # Get constraint improve direction # assume one at a time
-    improve_constraint_direction = np.array([0,0,0,0]).reshape(1,-1)
+    improve_constraint_direction = np.zeros( num_params ).reshape(1,-1)
     for i, constraint in enumerate( improve_constraints):
         constraint.sum().backward(retain_graph=True)
         param_grad = getGrad(params, l_bound = -20.0, u_bound = 20.0 )
@@ -149,7 +154,7 @@ def constrained_update( objective, maintain_constraints, improve_constraints, pa
     
     else:
         if len( improve_constraints ) > 0:
-            obj = cp.Maximize( improve_constraint_direction @ d )
+            obj = cp.Minimize( improve_constraint_direction @ d ) # does not do anything here
             return -improve_constraint_direction.reshape(-1,1)
         else:
             # print("HERE>>>>>>>>>>>>>>>>>>>")
@@ -227,7 +232,7 @@ def simulate_scenario( movie_name = 'test.mp4', adapt = True, enforce_input_cons
                 
                 fig.canvas.draw()
                 fig.canvas.flush_events()
-                writer.grab_frame()
+                # writer.grab_frame()
             
                 t = t + dt_inner
                 
@@ -278,14 +283,15 @@ def simulate_scenario( movie_name = 'test.mp4', adapt = True, enforce_input_cons
             
             
 # Run simulations
-fig1, ax1, robot1, rewards1, params1 = simulate_scenario( movie_name = 'si_2d/figures/cs4_case1_rc.mp4', adapt=True, enforce_input_constraints=True, params = [1.0, 4.0, 3.0, 2.0], plot_x_lim = plot_x_lim, plot_y_lim = plot_y_lim, offline = False, offline_iterations=20 )            
-# fig2, ax2, robot2, rewards2, params2 = simulate_scenario( movie_name = 'si_2d/figures/cs4_case2_rc.mp4', adapt=True, enforce_input_constraints=True, params = [0.5, 0.5, 0.5], plot_x_lim = plot_x_lim, plot_y_lim = plot_y_lim, offline = False, offline_iterations=20 )            
-# fig3, ax3, robot3, rewards3, params3 = simulate_scenario( movie_name = 'si_2d/figures/cs4_case1_offline.mp4', adapt=True, enforce_input_constraints=True, params = [1.0, 3.0, 3.0], plot_x_lim = plot_x_lim, plot_y_lim = plot_y_lim, offline = True, offline_iterations=20 )            
-# fig4, ax4, robot4, rewards4, params4 = simulate_scenario( movie_name = 'si_2d/figures/cs4_case2_offline.mp4', adapt=True, enforce_input_constraints=True, params = [0.5, 0.5, 0.5], plot_x_lim = plot_x_lim, plot_y_lim = plot_y_lim, offline = True, offline_iterations=20 )
+# fig1, ax1, robot1, rewards1, params1 = simulate_scenario( movie_name = 'uav_2d/figures/cs4_case1_rc.mp4', adapt=True, enforce_input_constraints=True, params = [1.0, 4.0, 3.0, 2.0], plot_x_lim = plot_x_lim, plot_y_lim = plot_y_lim, offline = False, offline_iterations=20 )            
+fig1, ax1, robot1, rewards1, params1 = simulate_scenario( movie_name = 'RateTunableCBFs/uav_2d/figures/cs4_case1_rc.mp4', adapt=True, enforce_input_constraints=True, params = [1.0, 4.0, 3.0, 2.0], plot_x_lim = plot_x_lim, plot_y_lim = plot_y_lim, offline = False, offline_iterations=20 )            
+# fig2, ax2, robot2, rewards2, params2 = simulate_scenario( movie_name = 'uav_2d/figures/cs4_case2_rc.mp4', adapt=True, enforce_input_constraints=True, params = [0.5, 0.5, 0.5], plot_x_lim = plot_x_lim, plot_y_lim = plot_y_lim, offline = False, offline_iterations=20 )            
+# fig3, ax3, robot3, rewards3, params3 = simulate_scenario( movie_name = 'uav_2d/figures/cs4_case1_offline.mp4', adapt=True, enforce_input_constraints=True, params = [1.0, 3.0, 3.0], plot_x_lim = plot_x_lim, plot_y_lim = plot_y_lim, offline = True, offline_iterations=20 )            
+# fig4, ax4, robot4, rewards4, params4 = simulate_scenario( movie_name = 'uav_2d/figures/cs4_case2_offline.mp4', adapt=True, enforce_input_constraints=True, params = [0.5, 0.5, 0.5], plot_x_lim = plot_x_lim, plot_y_lim = plot_y_lim, offline = True, offline_iterations=20 )
 
 # plt.ioff()
 
-# with open('si_2d/mpc_case1.npy', 'rb') as f:
+# with open('uav_2d/mpc_case1.npy', 'rb') as f:
 #     Xs = np.load(f)
     
 # fig, ax = plt.subplots(1,1)
@@ -317,7 +323,7 @@ fig1, ax1, robot1, rewards1, params1 = simulate_scenario( movie_name = 'si_2d/fi
 
 # # Show plot
 # ax.legend()
-# fig.savefig("si_2d/figures/cs4.png")
+# fig.savefig("uav_2d/figures/cs4.png")
 # plt.show()
 
 
