@@ -186,8 +186,8 @@ class UAV_2d:
         
     def lyapunov(self, G):
         
-        c1 = 5.0
-        c2 = 5.0
+        c1 = 1.0
+        c2 = 1.0
         c3 = 1.0
         
         V_w = 0.0#0.1
@@ -222,6 +222,8 @@ class UAV_2d:
         
         # tau_d = 
         
+        error_phi = np.arctan2( np.sin(phi-theta_g), np.cos(phi-theta_g) ) 
+        
         u_di = c1*dist*np.cos(theta_g-phi)
         
         fu = m22*self.X[4,0]*self.X[5,0]+X_u*self.X[3,0]+X_u_u*np.abs(self.X[3,0])*self.X[3,0]
@@ -229,17 +231,19 @@ class UAV_2d:
         tau_uid = -fu + c3*m11*( u_di - ui )
         d_tau_uid_dx = -dfu_dx +  c3*m11*np.array([[ -c1*dist*np.sin(theta_g-phi)*dtheta_g_dx[0,0]+c1*np.cos(theta_g-phi)*(-1.0/dist*(G[0,0]-xi)), -c1*dist*np.sin(theta_g-phi)*dtheta_g_dx[0,1]+c1*np.cos(theta_g-phi)*(-1.0/dist*(G[1,0]-yi)), -c1*dist*np.sin(theta_g-phi), -1, 0, 0, 0   ]])
                        
-        Xdi = np.array( [ G[0,0], G[1,0], theta_g, c1*np.linalg.norm( G[0:2]-self.X[0:2] ) * np.cos(theta_g-self.X[2,0]), c1 * np.linalg.norm( G[0:2]-self.X[0:2] ) * np.sin(theta_g-self.X[2,0]), c2 * (theta_g-self.X[2,0]), 0 ] ).reshape(-1,1) #c3 * ( c1*dist * np.cos(G[2,0]-self.X[2,0]) - self.X[3,0] ) ] ).reshape(-1,1)
+        Xdi = np.array( [ G[0,0], G[1,0], theta_g, c1*np.linalg.norm( G[0:2]-self.X[0:2] ) * np.cos(theta_g-phi), c1 * np.linalg.norm( G[0:2]-self.X[0:2] ) * np.sin(theta_g-phi), c2 * (-error_phi), 0 ] ).reshape(-1,1) #c3 * ( c1*dist * np.cos(G[2,0]-self.X[2,0]) - self.X[3,0] ) ] ).reshape(-1,1)
         # Xdi = np.array( [ G[0,0], G[1,0], G[2,0], c1*np.linalg.norm( G[0:2]-self.X[0:2] ) * np.cos(G[2,0]-self.X[2,0]), c1 * np.linalg.norm( G[0:2]-self.X[0:2] ) * np.sin(G[2,0]-self.X[2,0]), c2 * (G[2,0]-self.X[2,0]), 0 ] ).reshape(-1,1) #c3 * ( c1*dist * np.cos(G[2,0]-self.X[2,0]) - self.X[3,0] ) ] ).reshape(-1,1)
         
         V = np.linalg.norm(self.X-Xdi)**2     
         
-        dV_dx = np.array([[  2*(self.X[0,0]-Xdi[0,0]) + 2*(phi-theta_g)*( -dtheta_g_dx[0,0] ) + 2*( ui-c1*dist*np.cos(theta_g-phi) )*(c1*np.cos(theta_g-phi)/2/dist*2*(G[0,0]-xi)) +  2*( ui-c1*dist*np.cos(theta_g-phi) )*( c1*dist*np.sin(theta_g-phi)*dtheta_g_dx[0,0] )  + 2*( vi-c1*dist*np.sin(theta_g-phi) )*(c1*np.sin(theta_g-phi)/2/dist*2*(G[0,0]-xi)) + 2*( vi-c1*dist*np.sin(theta_g-phi) )*( -c1*dist*np.cos(theta_g-phi)*dtheta_g_dx[0,0] ) + 2*(ri-c2*(theta_g-phi))*(-c2*dtheta_g_dx[0,0]) + 2*(tau_ui-tau_uid)*(-d_tau_uid_dx[0,0]) , 
-                             2*(self.X[1,0]-Xdi[1,0]) + 2*(phi-theta_g)*( -dtheta_g_dx[0,1] ) + 2*( ui-c1*dist*np.cos(theta_g-phi) )*(c1*np.cos(theta_g-phi)/2/dist*2*(G[1,0]-yi)) +  2*( ui-c1*dist*np.cos(theta_g-phi) )*( c1*dist*np.sin(theta_g-phi)*dtheta_g_dx[0,1] )  + 2*( vi-c1*dist*np.sin(theta_g-phi) )*(c1*np.sin(theta_g-phi)/2/dist*2*(G[1,0]-yi)) + 2*( vi-c1*dist*np.sin(theta_g-phi) )*( -c1*dist*np.cos(theta_g-phi)*dtheta_g_dx[0,1] ) + 2*(ri-c2*(theta_g-phi))*(-c2*dtheta_g_dx[0,1]) + 2*(tau_ui-tau_uid)*(-d_tau_uid_dx[0,1]),
-                             2*( phi-theta_g ) + 2*( ui-c1*dist*np.cos(theta_g-phi) )*( -c1*dist*(np.sin(theta_g-phi)) ) + 2*( vi-c1*dist*np.sin(theta_g-phi) )*( -c1*dist*(-np.cos(theta_g-phi)) ) + 2*( ri-c2*(theta_g-phi) )*( c2 ) + 2*(tau_ui-tau_uid)*(-d_tau_uid_dx[0,2]),
+        
+        
+        dV_dx = np.array([[  2*(self.X[0,0]-Xdi[0,0]) + 2*(error_phi)*( -dtheta_g_dx[0,0] ) + 2*( ui-c1*dist*np.cos(theta_g-phi) )*(c1*np.cos(theta_g-phi)/2/dist*2*(G[0,0]-xi)) +  2*( ui-c1*dist*np.cos(theta_g-phi) )*( c1*dist*np.sin(theta_g-phi)*dtheta_g_dx[0,0] )  + 2*( vi-c1*dist*np.sin(theta_g-phi) )*(c1*np.sin(theta_g-phi)/2/dist*2*(G[0,0]-xi)) + 2*( vi-c1*dist*np.sin(theta_g-phi) )*( -c1*dist*np.cos(theta_g-phi)*dtheta_g_dx[0,0] ) + 2*(ri-c2*(-error_phi))*(-c2*dtheta_g_dx[0,0]) + 2*(tau_ui-tau_uid)*(-d_tau_uid_dx[0,0]) , 
+                             2*(self.X[1,0]-Xdi[1,0]) + 2*(error_phi)*( -dtheta_g_dx[0,1] ) + 2*( ui-c1*dist*np.cos(theta_g-phi) )*(c1*np.cos(theta_g-phi)/2/dist*2*(G[1,0]-yi)) +  2*( ui-c1*dist*np.cos(theta_g-phi) )*( c1*dist*np.sin(theta_g-phi)*dtheta_g_dx[0,1] )  + 2*( vi-c1*dist*np.sin(theta_g-phi) )*(c1*np.sin(theta_g-phi)/2/dist*2*(G[1,0]-yi)) + 2*( vi-c1*dist*np.sin(theta_g-phi) )*( -c1*dist*np.cos(theta_g-phi)*dtheta_g_dx[0,1] ) + 2*(ri-c2*(-error_phi))*(-c2*dtheta_g_dx[0,1]) + 2*(tau_ui-tau_uid)*(-d_tau_uid_dx[0,1]),
+                             2*( error_phi ) + 2*( ui-c1*dist*np.cos(theta_g-phi) )*( -c1*dist*(np.sin(theta_g-phi)) ) + 2*( vi-c1*dist*np.sin(theta_g-phi) )*( -c1*dist*(-np.cos(theta_g-phi)) ) + 2*( ri-c2*(theta_g-phi) )*( c2 ) + 2*(tau_ui-tau_uid)*(-d_tau_uid_dx[0,2]),
                              2*( ui-c1*dist*np.cos(theta_g-phi) ) + 2*(tau_ui-tau_uid)*(-d_tau_uid_dx[0,3]),
                              2*( vi-c1*dist*np.sin(theta_g-phi) ) + 2*(tau_ui-tau_uid)*(-d_tau_uid_dx[0,4]),
-                             2*( ri-c2*(theta_g-phi) ) + 2*(tau_ui-tau_uid)*(-d_tau_uid_dx[0,5]),
+                             2*( ri-c2*(-error_phi) ) + 2*(tau_ui-tau_uid)*(-d_tau_uid_dx[0,5]),
                              2*(tau_ui-tau_uid) + 2*(tau_ui-tau_uid)*(-d_tau_uid_dx[0,6])  ]])    
         
         # dV_dx = np.array([[  2*(self.X[0,0]-Xdi[0,0]) + 2*( ui-c1*dist*np.cos(G[2,0]-phi) )/2/dist*2*(self.X[0,0]-xi) + 2*( vi-c1*dist*np.sin(G[2,0]-phi) )/2/dist*2*(self.X[0,0]-xi)  , 
@@ -276,7 +280,7 @@ class UAV_2d:
         if error_angle < -np.pi:
             error_angle = error_angle + 2*np.pi
         tau_r = -5.0 * ( error_angle )
-        tau_u = 10.0 * ( 0.5 - ui ) * np.sign( -los[0,0]*np.cos(phi) -los[1,0]*np.sin(phi) )
+        tau_u = 5.0 * ( 0.5 - ui ) * np.sign( -los[0,0]*np.cos(phi) -los[1,0]*np.sin(phi) )
         return np.array([ tau_u, tau_r ]).reshape(-1,1)
         
         
@@ -371,11 +375,13 @@ if 1:
     dt = 0.01
     tf = 20
     num_steps = int(tf/dt)
-    alpha3 = 0.8
-    robot = UAV_2d( np.array([0,0,0,0.1,0.1,0,0.1]).reshape(-1,1), dt, ax, alpha1 = 2.0, alpha2 = 2.0 )
+    alpha3 = 10.0
+    robot = UAV_2d( np.array([-0.5,-2.5,0,0.1,0.1,0,0.1]).reshape(-1,1), dt, ax, alpha1 = 2.0, alpha2 = 3.0 )
+    # 1,3,5 ok.. from top
+    # 2,3,10 better
     obsX = [0.5, 0.5]
     obs2X = [1.5, 1.9]
-    targetX = np.array([0.3, 0.3]).reshape(-1,1)
+    targetX = np.array([0.9, 0.9]).reshape(-1,1)
     d_min = 0.3
     obs1 = circle2D(obsX[0], obsX[1], d_min, ax, 0)
     obs2 = circle2D(obs2X[0], obs2X[1], d_min, ax, 0)
@@ -391,8 +397,8 @@ if 1:
     objective = cp.Minimize( cp.sum_squares( u - u_ref ) + 10 * cp.sum_squares( delta[0,0] ) + 100000 * cp.sum_squares(delta[1:,:]) ) 
     # factor_matrix = np.zeros((num_constraints,1)); factor_matrix[0,0] = 1
     const = [A1 @ u + b1 + delta >= 0]
-    const += [ cp.abs( u[0,0] ) <= 50.0 ] #5
-    const += [ cp.abs( u[1,0] ) <= 50.0 ] # 2.0
+    const += [ cp.abs( u[0,0] ) <= 10.0 ] #5
+    const += [ cp.abs( u[1,0] ) <= 10.0 ] # 2.0
     cbf_controller = cp.Problem( objective, const )
     
     for i in range(num_steps):
@@ -403,14 +409,14 @@ if 1:
         u_ref.value = robot.nominal_input( targetX )
         # print(f"V:{V}, dV_dx:{dV_dx}")
         A1.value[0,:] = 1.0*(-dV_dx @ robot.g())
-        A1.value[1,:] = 0.0*(dh3_dx @ robot.g())
+        A1.value[1,:] = 1.0*(dh3_dx @ robot.g())
         b1.value[0,:] = 1.0*(-dV_dx @ robot.f() - 1.0 * V )
-        b1.value[1,:] = 0.0*(dh3_dx @ robot.f() + alpha3 * h3)
+        b1.value[1,:] = 1.0*(dh3_dx @ robot.f() + alpha3 * h3)
         cbf_controller.solve(solver=cp.GUROBI, reoptimize=True)
         
         if cbf_controller.status!='optimal':
             print("ERROR in QP")
-                  
+        print(f"A:{A1.value}, b:{b1.value}, ref:{u_ref.value}")
         print(f"control input: {u.value.T}")
         robot.step(u.value)
         # print(f"ui:{robot.X[3,0]}, vi:{robot.X[4,0]}")

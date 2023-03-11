@@ -14,7 +14,7 @@ dt = 0.05
 tf = 8
 d_min = 0.3
 T = int( tf/dt )
-model_trust = True
+model_trust = False
 fixed_parameter = True
 
 # trust parameters

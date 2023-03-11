@@ -17,21 +17,28 @@ tf = 40
 # N = int( tf/dt_inner )
 # N = 100#100
 # tf =  int( N * dt_inner ) #20
-outer_loop = 2
+outer_loop = 2#0000000
 num_gd_iterations = 1
-dt_outer = 0.05
+dt_outer = 0.01
 H = 30#100
 lr_alpha = 0.01#0.05
 plot_x_lim = (-1.0,3.5)  
-plot_y_lim = (-0.8,3) 
+# plot_y_lim = (-0.8,3) 
+plot_y_lim = (-2.6,3)
 
 # starting point
 # X_init = np.array([-0.5,-0.5,np.pi/2])
-X_init = np.array([-0.5,-0.5, 0, 0.1, 0.1, 0, 0.1 ])
 d_obs = 0.3
-goalX = np.array([2.5,2.0])
+X_init = np.array([0.3,-1.0, np.pi/4, 0.1, 0.1, 0, 0.1 ]) #-0.3,-0.5
+goalX = np.array([2.5,2.0]).reshape(-1,1)
 obs1X = [0.7, 0.7]
 obs2X = [1.5, 1.9]
+
+# X_init = np.array([-0.5,-2.5, 0, 0.1, 0.1, 0, 0.1 ])
+# goalX = np.array([0.9, 0.9]).reshape(-1,1)
+# goalX = np.array([1.5, 2.4]).reshape(-1,1)
+# obs1X = [0.5, 0.5]
+# obs2X = [1.5, 1.9]
 
 # input bounds
 u1_max = 10.0
@@ -79,16 +86,19 @@ def compute_reward(robot, obs1, obs2, params, dt_outer):
     improve_constraints = []  
     global H
     for i in range(H):
-        print(f"FROM loop states:{states[i].T}")
+        # print(f"FROM loop states:{states[i].T}")
         # make  control matrices
-        control_ref = torch.tensor([0,0], dtype=torch.float).reshape(-1,1)
+        # control_ref = torch.tensor([0,0], dtype=torch.float).reshape(-1,1)
+        control_ref = uav2D_nominal_input_jit( states[i], robot.goal_torch )
         A, b = traced_uav2D_qp_constraints_jit( states[i], robot.goal_torch, obs1.X_torch, obs2.X_torch, params[0], params[1], params[2], params[3] )
-        
+        # print(f"A:{A}, b:{b}, u_ref:{control_ref}")
         control, deltas = cbf_controller_layer( control_ref, A, b ) #if ( (torch.abs(control[0,0]) > 11) or (torch.abs(control[1,0])>11) ): # print("wrong input: issue with solver")
         
-        if ( np.abs(control[0,0].detach().numpy())>u1_max ) or ( np.abs(control[1,0].detach().numpy())>u2_max ):
+        if ( np.abs(control[0,0].detach().numpy())>1.1*u1_max ) or ( np.abs(control[1,0].detach().numpy())>1.1*u2_max ):
             print("solved Inaccurate")
-            
+            # plt.ioff()
+            # plt.show()
+            # plt.ion()
             A, b = uav2D_qp_constraints_jit( states[i], robot.goal_torch, obs1.X_torch, obs2.X_torch, params[0], params[1], params[2], params[3] )
             
             return reward, improve_constraints, maintain_constraints, True
@@ -114,7 +124,7 @@ def compute_reward(robot, obs1, obs2, params, dt_outer):
                    
         # Get next state
         next_state = update_uav_state_jit( states[i], control, dt_outer )
-        print(f"FROM loop: next_state:{next_state.T}, control:{control.T}")
+        # print(f"FROM loop: next_state:{next_state.T}, control:{control.T}")
                 
         # Save next state and compute reward
         states.append( next_state )
@@ -222,11 +232,13 @@ def simulate_scenario( movie_name = 'test.mp4', adapt = True, enforce_input_cons
                 robot.X_torch = torch.tensor(robot.X, dtype=torch.float)
             
                 # get controller
-                control_ref = torch.tensor([0,0], dtype=torch.float).reshape(-1,1)
+                # control_ref = torch.tensor([0,0], dtype=torch.float).reshape(-1,1)
+                control_ref = traced_uav2D_nominal_input_jit( robot.X_torch, robot.goal_torch )
                 A, b = traced_uav2D_qp_constraints_jit( robot.X_torch, robot.goal_torch, obs1.X_torch, obs2.X_torch, torch.tensor(params[0], dtype=torch.float), torch.tensor(params[1], dtype=torch.float), torch.tensor(params[2], dtype=torch.float), torch.tensor(params[3], dtype=torch.float) )
-                control, deltas = cbf_controller_layer( control_ref, A, b )
-                print(f"t:{t}, actual: {control.T}") 
-                # print(f"control: {control.T}")
+                # print(f"A:{A}, b:{b}, ref:{control_ref}")
+                control, deltas = cbf_controller_layer( control_ref, A, b, solver_args=solver_args )
+                # print(f"t:{t}, actual: {control.T}") 
+                print(f"control: {control.T}")
                 robot.step( control.detach().numpy() )
                 robot.render_plot()
                 
@@ -237,7 +249,8 @@ def simulate_scenario( movie_name = 'test.mp4', adapt = True, enforce_input_cons
                 # Nominal robot
                 if not nominal_failed:
                     robot.X_nominal_torch = torch.tensor(robot.X_nominal, dtype=torch.float)
-                    control_ref = torch.tensor([0,0], dtype=torch.float).reshape(-1,1)
+                    # control_ref = torch.tensor([0,0], dtype=torch.float).reshape(-1,1)
+                    control_ref = uav2D_nominal_input_jit( robot.X_nominal_torch, robot.goal_torch )
                     A, b = traced_uav2D_qp_constraints_jit( robot.X_nominal_torch, robot.goal_torch, obs1.X_torch, obs2.X_torch, torch.tensor(params_copy[0], dtype=torch.float), torch.tensor(params_copy[1], dtype=torch.float), torch.tensor(params_copy[2], dtype=torch.float), torch.tensor(params_copy[3], dtype=torch.float) )
                     control, deltas = cbf_controller_layer( control_ref, A, b )  
                     if np.any( deltas[1:].detach().numpy() > 0.1 ):
@@ -299,8 +312,8 @@ def simulate_scenario( movie_name = 'test.mp4', adapt = True, enforce_input_cons
             
             
 # Run simulations
-# fig1, ax1, robot1, rewards1, params1 = simulate_scenario( movie_name = 'uav_2d/figures/cs4_case1_rc.mp4', adapt=True, enforce_input_constraints=True, params = [1.0, 4.0, 3.0, 2.0], plot_x_lim = plot_x_lim, plot_y_lim = plot_y_lim, offline = False, offline_iterations=20 )            
-fig1, ax1, robot1, rewards1, params1 = simulate_scenario( movie_name = 'RateTunableCBFs/uav_2d/figures/cs4_case1_rc.mp4', adapt=True, enforce_input_constraints=True, params = [1.0, 4.0, 3.0, 2.0], plot_x_lim = plot_x_lim, plot_y_lim = plot_y_lim, offline = False, offline_iterations=20 )            
+fig1, ax1, robot1, rewards1, params1 = simulate_scenario( movie_name = 'uav_2d/figures/cs4_case1_rc.mp4', adapt=True, enforce_input_constraints=True, params = [1.0, 2.0, 4.0, 20.0], plot_x_lim = plot_x_lim, plot_y_lim = plot_y_lim, offline = False, offline_iterations=20 )            
+# fig1, ax1, robot1, rewards1, params1 = simulate_scenario( movie_name = 'RateTunableCBFs/uav_2d/figures/cs4_case1_rc.mp4', adapt=True, enforce_input_constraints=True, params = [1.0, 2.0, 3.0, 10.0], plot_x_lim = plot_x_lim, plot_y_lim = plot_y_lim, offline = False, offline_iterations=20 )            
 # fig2, ax2, robot2, rewards2, params2 = simulate_scenario( movie_name = 'uav_2d/figures/cs4_case2_rc.mp4', adapt=True, enforce_input_constraints=True, params = [0.5, 0.5, 0.5], plot_x_lim = plot_x_lim, plot_y_lim = plot_y_lim, offline = False, offline_iterations=20 )            
 # fig3, ax3, robot3, rewards3, params3 = simulate_scenario( movie_name = 'uav_2d/figures/cs4_case1_offline.mp4', adapt=True, enforce_input_constraints=True, params = [1.0, 3.0, 3.0], plot_x_lim = plot_x_lim, plot_y_lim = plot_y_lim, offline = True, offline_iterations=20 )            
 # fig4, ax4, robot4, rewards4, params4 = simulate_scenario( movie_name = 'uav_2d/figures/cs4_case2_offline.mp4', adapt=True, enforce_input_constraints=True, params = [0.5, 0.5, 0.5], plot_x_lim = plot_x_lim, plot_y_lim = plot_y_lim, offline = True, offline_iterations=20 )

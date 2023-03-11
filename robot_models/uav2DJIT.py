@@ -44,7 +44,9 @@ def update_uav_state_jit( state, control, dt ):
     f = uav_f_torch_jit(state)
     g = uav_g_torch_jit(state)
     next_state = state + ( f + g @ control ) * dt
-    print(f"state:{state.T}, next_state:{next_state.T}, f:{f.T}")
+    next_state_copy = next_state.clone()
+    next_state[2,0] = torch.atan2(torch.sin(next_state_copy[2,0]), torch.cos(next_state_copy[2,0]))
+    # print(f"state:{state.T}, next_state:{next_state.T}, f:{f.T}")
     return next_state
 traced_update_si_state_jit = update_uav_state_jit#torch.jit.trace( update_uav_state_jit, ( torch.ones(7,1, dtype=torch.float), torch.ones(2,1, dtype=torch.float), torch.tensor(0.5, dtype=torch.float) ) )
 
@@ -119,12 +121,25 @@ def uav_SI2D_barrier_jit(X, targetX, alpha1, alpha2):#, min_D = torch.tensor(0.3
     dh3_dx = dh_ddot_dx + alpha1 * dh_dot_dx + alpha2 * dh2_dx
     
     return h3, dh3_dx
+
+def uav2D_nominal_input_jit(X,target):
+        phi = X[2,0]
+        ui =  X[3,0]
+        los = X[0:2] - target[0:2]
+        los = los / torch.norm(los)
+        los_angle = torch.atan2( X[1,0]-target[1,0], X[0,0]-target[0,0] )
+        error_angle = los_angle - phi
+        error_angle = torch.atan2( torch.sin(error_angle), torch.cos(error_angle) )
+        tau_r = -5.0 * ( error_angle )
+        tau_u = 5.0 * ( 0.5 - ui ) * torch.sign( -los[0,0]*torch.cos(phi) -los[1,0]*torch.sin(phi) )
+        return torch.cat( (tau_u.reshape(-1,1), tau_r.reshape(-1,1)), dim=0 )
+traced_uav2D_nominal_input_jit = torch.jit.trace( uav2D_nominal_input_jit, ( torch.ones(7,1, dtype=torch.float), torch.zeros(2,1, dtype=torch.float) ) ) 
             
 def uav2D_lyapunov_jit(X, G):
         
-        c1 = 5.0
-        c2 = 5.0
-        c3 = 1.0
+        c1 = 0.5#1.0 # 5.0
+        c2 = 0.5#1.0 #5.0
+        c3 = 0.5#1.0
         
         xi = X[0,0]
         yi = X[1,0]
@@ -173,6 +188,8 @@ def uav2D_lyapunov_jit(X, G):
         
         V = torch.linalg.norm(X-Xdi)**2     
         
+        error_phi = torch.atan2( torch.sin(phi-theta_g), torch.cos(phi-theta_g) )
+        
         dV_dx = torch.cat( (  (2*(X[0,0]-Xdi[0,0]) + 2*(phi-theta_g)*( -dtheta_g_dx[0,0] ) + 2*( ui-c1*dist*torch.cos(theta_g-phi) )*(c1*torch.cos(theta_g-phi)/2/dist*2*(G[0,0]-xi)) +  2*( ui-c1*dist*torch.cos(theta_g-phi) )*( c1*dist*torch.sin(theta_g-phi)*dtheta_g_dx[0,0] )  + 2*( vi-c1*dist*torch.sin(theta_g-phi) )*(c1*torch.sin(theta_g-phi)/2/dist*2*(G[0,0]-xi)) + 2*( vi-c1*dist*torch.sin(theta_g-phi) )*( -c1*dist*torch.cos(theta_g-phi)*dtheta_g_dx[0,0] ) + 2*(ri-c2*(theta_g-phi))*(-c2*dtheta_g_dx[0,0]) + 2*(tau_ui-tau_uid)*(-d_tau_uid_dx[0,0])).reshape(-1,1) , 
                              (2*(X[1,0]-Xdi[1,0]) + 2*(phi-theta_g)*( -dtheta_g_dx[0,1] ) + 2*( ui-c1*dist*torch.cos(theta_g-phi) )*(c1*torch.cos(theta_g-phi)/2/dist*2*(G[1,0]-yi)) +  2*( ui-c1*dist*torch.cos(theta_g-phi) )*( c1*dist*torch.sin(theta_g-phi)*dtheta_g_dx[0,1] )  + 2*( vi-c1*dist*torch.sin(theta_g-phi) )*(c1*torch.sin(theta_g-phi)/2/dist*2*(G[1,0]-yi)) + 2*( vi-c1*dist*torch.sin(theta_g-phi) )*( -c1*dist*torch.cos(theta_g-phi)*dtheta_g_dx[0,1] ) + 2*(ri-c2*(theta_g-phi))*(-c2*dtheta_g_dx[0,1]) + 2*(tau_ui-tau_uid)*(-d_tau_uid_dx[0,1])).reshape(-1,1),
                              (2*( phi-theta_g ) + 2*( ui-c1*dist*torch.cos(theta_g-phi) )*( -c1*dist*(torch.sin(theta_g-phi)) ) + 2*( vi-c1*dist*torch.sin(theta_g-phi) )*( -c1*dist*(-torch.cos(theta_g-phi)) ) + 2*( ri-c2*(theta_g-phi) )*( c2 ) + 2*(tau_ui-tau_uid)*(-d_tau_uid_dx[0,2])).reshape(-1,1),
@@ -191,7 +208,6 @@ def uav2D_lyapunov_jit(X, G):
         
         return V, dV_dx
 
-
     
 # @torch.jit.script
 def uav_compute_reward_jit(X,targetX, control):
@@ -207,10 +223,10 @@ def uav2D_qp_constraints_jit(state, goal, obs1, obs2, param0, param1, param2, pa
     f = uav_f_torch_jit(state)
     g = uav_g_torch_jit(state)
     A0 = -dV_dx @ g; b0 = -dV_dx @ f - param0 * V
-    A1 = dh1_dx @ g; b1 = dh1_dx @ f + param1 * h1
-    A2 = dh2_dx @ g; b2 = dh2_dx @ f + param2 * h2        
-    A = torch.cat( (A0, A1, A2), dim=0 )
-    b = torch.cat( (b0, b1, b2), dim=0 )
+    A1 = dh1_dx @ g; b1 = dh1_dx @ f + param3 * h1
+    A2 = dh2_dx @ g; b2 = dh2_dx @ f + param3 * h2        
+    A = torch.cat( (A0, A1, 0*A2), dim=0 )
+    b = torch.cat( (b0, b1, 0*b2), dim=0 )
     # A = torch.cat( (A0, A1), dim=0 )
     # b = torch.cat( (b0, b1), dim=0 )
     return A, b
