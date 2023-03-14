@@ -110,7 +110,7 @@ def compute_reward(robot, obs1, obs2, params, dt_outer):
             # improve_constraints.append( -b[0] )
             improve_constraints.append( -b[1] )
             improve_constraints.append( -b[2] )     
-            improve_constraints = []         
+            # improve_constraints = []         
             return reward, improve_constraints, maintain_constraints, False
         else:
             temp = A @ control + b + deltas
@@ -120,7 +120,7 @@ def compute_reward(robot, obs1, obs2, params, dt_outer):
                 maintain_constraints.append(temp[1] + 0.01)
             if torch.abs(temp[2])<1.0:
                 maintain_constraints.append(temp[2] + 0.01)
-            maintain_constraints = []
+            # maintain_constraints = []
                    
         # Get next state
         next_state = update_uav_state_jit( states[i], control, dt_outer )

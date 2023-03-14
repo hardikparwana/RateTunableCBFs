@@ -21,7 +21,7 @@ outer_loop = 2#0000000
 num_gd_iterations = 1
 dt_outer = 0.01
 H = 20#100
-lr_alpha = 0.05#0.05
+lr_alpha = 0.1#0.05
 plot_x_lim = (-1.0,3.5)  
 # plot_y_lim = (-0.8,3) 
 plot_y_lim = (-2.6,3)
@@ -109,11 +109,15 @@ def compute_reward(robot, obs1, obs2, params, dt_outer):
         if np.any( deltas[1:].detach().numpy() > 0.1): #01 ):
             print(f"Error, infeasible at i:{i}, control:{control.T}, delta:{deltas.T}")
             # improve_constraints.append( -b[0] )
-            improve_constraints.append( -b[1] )
-            improve_constraints.append( -b[2] )     
-            improve_constraints.append( -b[3] )  
-            improve_constraints.append( -b[4] )  
-            improve_constraints = []         
+            if deltas[1,0].detach().numpy() > 0.1:
+                improve_constraints.append( -b[1] )
+            if deltas[2,0].detach().numpy() > 0.1:
+                improve_constraints.append( -b[2] )
+            if deltas[3,0].detach().numpy() > 0.1:
+                improve_constraints.append( -b[3] )
+            if deltas[4,0].detach().numpy() > 0.1:
+                improve_constraints.append( -b[4] )
+            # improve_constraints = []         
             return reward, improve_constraints, maintain_constraints, False
         else:
             temp = A @ control + b + deltas
@@ -123,7 +127,7 @@ def compute_reward(robot, obs1, obs2, params, dt_outer):
                 maintain_constraints.append(temp[1] + 0.01)
             if torch.abs(temp[2])<1.0:
                 maintain_constraints.append(temp[2] + 0.01)
-            maintain_constraints = []
+            # maintain_constraints = []
                    
         # Get next state
         next_state = update_bicycle_state_jit( states[i], control, dt_outer )
