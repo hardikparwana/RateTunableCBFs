@@ -17,11 +17,11 @@ tf = 40
 # N = int( tf/dt_inner )
 # N = 100#100
 # tf =  int( N * dt_inner ) #20
-outer_loop = 2#0000000
-num_gd_iterations = 1
+outer_loop = 10#0000000
+num_gd_iterations = 5
 dt_outer = 0.01
-H = 20#100
-lr_alpha = 0.1#0.05
+H = 30#100
+lr_alpha = 0.01#0.05
 plot_x_lim = (-1.0,3.5)  
 # plot_y_lim = (-0.8,3) 
 plot_y_lim = (-2.6,3)
@@ -179,7 +179,8 @@ def constrained_update( objective, maintain_constraints, improve_constraints, pa
             obj = cp.Minimize(  objective_grad @ d  )
         problem = cp.Problem( obj, const )    
         problem.solve()#solver = cp.GUROBI )    
-        if problem.status != 'optimal':
+        if (problem.status != 'optimal') and (problem.status != 'optimal_inaccurate'):
+            print(problem.status)
             print("Cannot Find feasible direction")
             exit()
         
