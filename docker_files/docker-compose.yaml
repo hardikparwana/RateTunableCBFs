@@ -8,7 +8,7 @@ services:
       network_mode: "host"
       volumes:
         - /tmp/.X11-unix:/tmp/.X11-unix
-        - /home/hardik/Desktop/eecs587/parallel-computing-project/code:/home/code
+        - /home/dasc/hardik/RateTunableCBFs:/home/RateTunableCBFs
       environment:
         - DISPLAY = $DISPLAY
         - NVIDIA_VISIBLE_DEVICES=all
