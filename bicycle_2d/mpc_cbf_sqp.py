@@ -178,7 +178,7 @@ def constrained_update( objective, maintain_constraints, improve_constraints, pa
         else:
             obj = cp.Minimize(  objective_grad @ d  )
         problem = cp.Problem( obj, const )    
-        problem.solve( solver = cp.GUROBI )    
+        problem.solve()#solver = cp.GUROBI )    
         if problem.status != 'optimal':
             print("Cannot Find feasible direction")
             exit()
