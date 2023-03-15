@@ -17,11 +17,14 @@ tf = 40
 # N = int( tf/dt_inner )
 # N = 100#100
 # tf =  int( N * dt_inner ) #20
-outer_loop = 4#0000000
-num_gd_iterations = 5
+outer_loop = 4#0000000 #4
+num_gd_iterations = 1#1
 dt_outer = 0.01
-H = 20#100
+
+H = 20#20#100
 lr_alpha = 0.07#0.05
+# lr_alpha = 0.1#0.05
+
 plot_x_lim = (-1.0,3.5)  
 # plot_y_lim = (-0.8,3) 
 plot_y_lim = (-2.6,3)
@@ -30,7 +33,7 @@ plot_y_lim = (-2.6,3)
 # X_init = np.array([-0.5,-0.5,np.pi/2])
 d_obs = 0.3
 X_init = np.array([0.3,-1.0, np.pi/4, 0.1 ]) #-0.3,-0.5
-goalX = np.array([1.25,2.5]).reshape(-1,1) #2.5,2.0
+goalX = np.array([1.7,2.5]).reshape(-1,1) #2.5,2.0
 obs1X = [0.7, 0.7]
 obs2X = [2.0, 1.9]
 
@@ -100,7 +103,7 @@ def compute_reward(robot, obs1, obs2, params, dt_outer):
             # plt.ioff()
             # plt.show()
             # plt.ion()
-            A, b = bicycle2D_qp_constraints_jit( states[i], robot.goal_torch, obs1.X_torch, obs2.X_torch, params[0], params[1], params[2], params[3] )
+            A, b = bicycle2D_qp_constraints_jit( states[i], robot.goal_torch, obs1.X_torch, obs2.X_torch, params[0], params[1], params[2])
             
             return reward, improve_constraints, maintain_constraints, True
         
@@ -169,8 +172,10 @@ def constrained_update( objective, maintain_constraints, improve_constraints, pa
             if constraints ==[]: 
                 constraints = constraint.detach().numpy().reshape(-1,1)
             else:
-                constraints = np.append( constraints, constraint.detach().numpy().reshape(-1,1), axis = 0 )       
-
+                if constraint.detach().numpy()>=0:
+                    constraints = np.append( constraints, constraint.detach().numpy().reshape(-1,1), axis = 0 )       
+                else:
+                    constraints = np.append( constraints, 0*constraint.detach().numpy().reshape(-1,1), axis = 0 )       
         const = [ constraints + d_maintain @ d >= 0 ]
         const += [ cp.sum_squares( d ) <= 200 ]
         if len(improve_constraint_direction)>0:
@@ -213,7 +218,8 @@ def simulate_scenario( movie_name = 'test.mp4', adapt = True, enforce_input_cons
     obs1 = circle2D(obs1X[0], obs1X[1], d_obs,ax,0)
     obs2 = circle2D(obs2X[0], obs2X[1], d_obs,ax,1)#1.5, 1.9
     params_copy = np.copy( np.asarray(params) )
-    
+    # plt.ioff()
+    # plt.show()
     i = 0
     step_rewards = []
     step_params = np.asarray(params).reshape(-1,1)
@@ -247,6 +253,7 @@ def simulate_scenario( movie_name = 'test.mp4', adapt = True, enforce_input_cons
                 if np.any( deltas[1:].detach().numpy() > 0.3 ):
                         nominal_failed = True
                         print(f"Error, ACTUAL controller failed, CHECK algorithm: control:{control.T}, delta:{deltas.T}")
+                        exit()
                 # print(f"t:{t}, actual: {control.T}") 
                 # print(f"control: {control.T}")
                 robot.step( control.detach().numpy() )
@@ -286,10 +293,15 @@ def simulate_scenario( movie_name = 'test.mp4', adapt = True, enforce_input_cons
                         success = False          
                         loop_number = 0     
                         lr_rate = lr_alpha     
+                        # print(f"lr_alpha:{lr_alpha}")
                         while not success:       
-                            if loop_number>50:
+                            if loop_number==50:
                                 lr_rate = lr_rate / 2
-                            if loop_number>100:
+                            if loop_number==100:
+                                lr_rate = lr_rate / 2
+                            if loop_number==150:
+                                lr_rate = lr_rate / 2
+                            if loop_number==200:
                                 lr_rate = lr_rate / 2
                             robot.params = torch.tensor( params, dtype=torch.float, requires_grad=True )     
                             reward, improve_constraints, maintain_constraints, success = compute_reward(robot, obs1, obs2, robot.params, torch.tensor(dt_outer, dtype=torch.float))
@@ -300,7 +312,7 @@ def simulate_scenario( movie_name = 'test.mp4', adapt = True, enforce_input_cons
                             params[0] = np.clip( params[0] + lr_rate * grads[0], 0.0, None ).item()
                             params[1] = np.clip( params[1] + lr_rate * grads[1], 0.0, None ).item()
                             params[2] = np.clip( params[2] + lr_rate * grads[2], 0.0, None ).item()
-                            # print(f"grads: {grads.T}, params: {params}")
+                            # print(f"grads: {grads.T}, params: {params}, lr_rate:{lr_rate}, add1:{lr_rate * grads[0]}, add2:{lr_rate * grads[1]}, add3:{lr_rate * grads[0]}")
                             loop_number = loop_number + 1
                             print(f"params: {params}")
                         print(f"Success!")
@@ -331,6 +343,7 @@ def simulate_scenario( movie_name = 'test.mp4', adapt = True, enforce_input_cons
             
 # Run simulations
 fig1, ax1, robot1, rewards1, params1 = simulate_scenario( movie_name = 'bicycle_2d/figures/cs4_case1_rc.mp4', adapt=True, enforce_input_constraints=True, params = [1.0, 3.0, 10.0], plot_x_lim = plot_x_lim, plot_y_lim = plot_y_lim, offline = False, offline_iterations=20 )            
+# fig1, ax1, robot1, rewards1, params1 = simulate_scenario( movie_name = 'bicycle_2d/figures/cs4_case1_rc.mp4', adapt=True, enforce_input_constraints=True, params = [1.0, 1, 2.0], plot_x_lim = plot_x_lim, plot_y_lim = plot_y_lim, offline = False, offline_iterations=20 )            
 # fig1, ax1, robot1, rewards1, params1 = simulate_scenario( movie_name = 'RateTunableCBFs/bicycle_2d/figures/cs4_case1_rc.mp4', adapt=True, enforce_input_constraints=True, params = [1.0, 2.0, 3.0, 10.0], plot_x_lim = plot_x_lim, plot_y_lim = plot_y_lim, offline = False, offline_iterations=20 )            
 # fig2, ax2, robot2, rewards2, params2 = simulate_scenario( movie_name = 'bicycle_2d/figures/cs4_case2_rc.mp4', adapt=True, enforce_input_constraints=True, params = [0.5, 0.5, 0.5], plot_x_lim = plot_x_lim, plot_y_lim = plot_y_lim, offline = False, offline_iterations=20 )            
 # fig3, ax3, robot3, rewards3, params3 = simulate_scenario( movie_name = 'bicycle_2d/figures/cs4_case1_offline.mp4', adapt=True, enforce_input_constraints=True, params = [1.0, 3.0, 3.0], plot_x_lim = plot_x_lim, plot_y_lim = plot_y_lim, offline = True, offline_iterations=20 )            

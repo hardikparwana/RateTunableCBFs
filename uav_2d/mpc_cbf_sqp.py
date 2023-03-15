@@ -12,15 +12,15 @@ from robot_models.uav_2d import UAV_2d
 # import warnings
 # warnings.filterwarnings("error")
 
-dt_inner = 0.01
+dt_inner = 0.001
 tf = 40
 # N = int( tf/dt_inner )
 # N = 100#100
 # tf =  int( N * dt_inner ) #20
-outer_loop = 2#0000000
-num_gd_iterations = 1
-dt_outer = 0.01
-H = 30#100
+outer_loop = 20#0000000
+num_gd_iterations = 5
+dt_outer = 0.001
+H = 20#100
 lr_alpha = 0.01#0.05
 plot_x_lim = (-1.0,3.5)  
 # plot_y_lim = (-0.8,3) 
@@ -30,9 +30,9 @@ plot_y_lim = (-2.6,3)
 # X_init = np.array([-0.5,-0.5,np.pi/2])
 d_obs = 0.3
 X_init = np.array([0.3,-1.0, np.pi/4, 0.1, 0.1, 0, 0.1 ]) #-0.3,-0.5
-goalX = np.array([2.5,2.0]).reshape(-1,1)
+goalX = np.array([1.4,2.5]).reshape(-1,1)
 obs1X = [0.7, 0.7]
-obs2X = [1.5, 1.9]
+obs2X = [2.0, 1.9]
 
 # X_init = np.array([-0.5,-2.5, 0, 0.1, 0.1, 0, 0.1 ])
 # goalX = np.array([0.9, 0.9]).reshape(-1,1)
@@ -41,8 +41,8 @@ obs2X = [1.5, 1.9]
 # obs2X = [1.5, 1.9]
 
 # input bounds
-u1_max = 10.0
-u2_max = 10.0
+u1_max = 5.0
+u2_max = 5.0
 
 
 ##  Define Controller ################
@@ -108,8 +108,10 @@ def compute_reward(robot, obs1, obs2, params, dt_outer):
         if np.any( deltas[1:].detach().numpy() > 0.01 ):
             print(f"Error, control:{control.T}, delta:{deltas.T}")
             # improve_constraints.append( -b[0] )
-            improve_constraints.append( -b[1] )
-            improve_constraints.append( -b[2] )     
+            if deltas[1,0]>0.01:
+                improve_constraints.append( -b[1] )
+            if deltas[2,0]>0.01:
+                improve_constraints.append( -b[2] )     
             # improve_constraints = []         
             return reward, improve_constraints, maintain_constraints, False
         else:
@@ -162,7 +164,10 @@ def constrained_update( objective, maintain_constraints, improve_constraints, pa
             if constraints ==[]: 
                 constraints = constraint.detach().numpy().reshape(-1,1)
             else:
-                constraints = np.append( constraints, constraint.detach().numpy().reshape(-1,1), axis = 0 )       
+                if constraint.detach().numpy()>=0:
+                    constraints = np.append( constraints, constraint.detach().numpy().reshape(-1,1), axis = 0 )   
+                else:
+                    constraints = np.append( constraints, 0*constraint.detach().numpy().reshape(-1,1), axis = 0 )
 
         const = [ constraints + d_maintain @ d >= 0 ]
         const += [ cp.sum_squares( d ) <= 200 ]
@@ -171,7 +176,7 @@ def constrained_update( objective, maintain_constraints, improve_constraints, pa
         else:
             obj = cp.Minimize(  objective_grad @ d  )
         problem = cp.Problem( obj, const )    
-        problem.solve( solver = cp.GUROBI )    
+        problem.solve()# solver = cp.GUROBI )    
         if problem.status != 'optimal':
             print("Cannot Find feasible direction")
             exit()
@@ -273,8 +278,16 @@ def simulate_scenario( movie_name = 'test.mp4', adapt = True, enforce_input_cons
                 
                     for k in range(num_gd_iterations):
                         # print(f"k:{k}")    
-                        success = False                    
-                        while not success:       
+                        success = False   
+                        loop_number = 0     
+                        lr_rate = lr_alpha                   
+                        while not success:  
+                            if loop_number==30:
+                                lr_rate = lr_rate / 2
+                            if loop_number==70:
+                                lr_rate = lr_rate / 2    
+                            if loop_number==120:
+                                lr_rate = lr_rate / 2
                             robot.params = torch.tensor( params, dtype=torch.float, requires_grad=True )     
                             reward, improve_constraints, maintain_constraints, success = compute_reward(robot, obs1, obs2, robot.params, torch.tensor(dt_outer, dtype=torch.float))
                             grads = constrained_update( reward, maintain_constraints, improve_constraints, robot.params )
