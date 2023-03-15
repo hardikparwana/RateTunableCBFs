@@ -12,15 +12,15 @@ from robot_models.uav_2d import UAV_2d
 # import warnings
 # warnings.filterwarnings("error")
 
-dt_inner = 0.01
+dt_inner = 0.001
 tf = 40
 # N = int( tf/dt_inner )
 # N = 100#100
 # tf =  int( N * dt_inner ) #20
-outer_loop = 2#0000000
-num_gd_iterations = 1
-dt_outer = 0.01
-H = 30#100
+outer_loop = 20#0000000
+num_gd_iterations = 5
+dt_outer = 0.001
+H = 20#100
 lr_alpha = 0.01#0.05
 plot_x_lim = (-1.0,3.5)  
 # plot_y_lim = (-0.8,3) 
@@ -41,8 +41,8 @@ obs2X = [1.5, 1.9]
 # obs2X = [1.5, 1.9]
 
 # input bounds
-u1_max = 10.0
-u2_max = 10.0
+u1_max = 5.0
+u2_max = 5.0
 
 
 ##  Define Controller ################
@@ -108,8 +108,10 @@ def compute_reward(robot, obs1, obs2, params, dt_outer):
         if np.any( deltas[1:].detach().numpy() > 0.01 ):
             print(f"Error, control:{control.T}, delta:{deltas.T}")
             # improve_constraints.append( -b[0] )
-            improve_constraints.append( -b[1] )
-            improve_constraints.append( -b[2] )     
+            if deltas[1,0]>0.01:
+                improve_constraints.append( -b[1] )
+            if deltas[2,0]>0.01:
+                improve_constraints.append( -b[2] )     
             # improve_constraints = []         
             return reward, improve_constraints, maintain_constraints, False
         else:
