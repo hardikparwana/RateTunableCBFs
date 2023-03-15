@@ -17,11 +17,11 @@ tf = 40
 # N = int( tf/dt_inner )
 # N = 100#100
 # tf =  int( N * dt_inner ) #20
-outer_loop = 10#0000000
+outer_loop = 4#0000000
 num_gd_iterations = 5
 dt_outer = 0.01
-H = 30#100
-lr_alpha = 0.01#0.05
+H = 20#100
+lr_alpha = 0.07#0.05
 plot_x_lim = (-1.0,3.5)  
 # plot_y_lim = (-0.8,3) 
 plot_y_lim = (-2.6,3)
@@ -32,7 +32,7 @@ d_obs = 0.3
 X_init = np.array([0.3,-1.0, np.pi/4, 0.1 ]) #-0.3,-0.5
 goalX = np.array([1.25,2.5]).reshape(-1,1) #2.5,2.0
 obs1X = [0.7, 0.7]
-obs2X = [1.5, 1.9]
+obs2X = [2.0, 1.9]
 
 # X_init = np.array([-0.5,-2.5, 0, 0.1, 0.1, 0, 0.1 ])
 # goalX = np.array([0.9, 0.9]).reshape(-1,1)
@@ -283,18 +283,25 @@ def simulate_scenario( movie_name = 'test.mp4', adapt = True, enforce_input_cons
                 
                     for k in range(num_gd_iterations):
                         # print(f"k:{k}")    
-                        success = False                    
+                        success = False          
+                        loop_number = 0     
+                        lr_rate = lr_alpha     
                         while not success:       
+                            if loop_number>50:
+                                lr_rate = lr_rate / 2
+                            if loop_number>100:
+                                lr_rate = lr_rate / 2
                             robot.params = torch.tensor( params, dtype=torch.float, requires_grad=True )     
                             reward, improve_constraints, maintain_constraints, success = compute_reward(robot, obs1, obs2, robot.params, torch.tensor(dt_outer, dtype=torch.float))
                             grads = constrained_update( reward, maintain_constraints, improve_constraints, robot.params )
                             
                             grads = np.clip( grads, -2.0, 2.0 )
                             
-                            params[0] = np.clip( params[0] + lr_alpha * grads[0], 0.0, None ).item()
-                            params[1] = np.clip( params[1] + lr_alpha * grads[1], 0.0, None ).item()
-                            params[2] = np.clip( params[2] + lr_alpha * grads[2], 0.0, None ).item()
+                            params[0] = np.clip( params[0] + lr_rate * grads[0], 0.0, None ).item()
+                            params[1] = np.clip( params[1] + lr_rate * grads[1], 0.0, None ).item()
+                            params[2] = np.clip( params[2] + lr_rate * grads[2], 0.0, None ).item()
                             # print(f"grads: {grads.T}, params: {params}")
+                            loop_number = loop_number + 1
                             print(f"params: {params}")
                         print(f"Success!")
                 else:
