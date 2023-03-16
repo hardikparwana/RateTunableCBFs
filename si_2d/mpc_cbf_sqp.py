@@ -15,10 +15,10 @@ tf =  int( N * dt_inner ) #20
 outer_loop = 10
 num_gd_iterations = 5
 dt_outer = 0.1
-H = 10#100
+H = 20#10#100
 lr_alpha = 0.1#0.05
-plot_x_lim = (-1.0,3.5)  
-plot_y_lim = (-0.8,3) 
+plot_x_lim = (-1.0,2.5)  
+plot_y_lim = (-0.8,2.5) 
 
 # starting point
 # X_init = np.array([-0.5,-0.5,np.pi/2])

@@ -33,6 +33,7 @@ class Bicycle_2d:
         self.alpha1 = alpha1
         
         self.U = np.array([0,0]).reshape(-1,1)
+        self.U_nominal = np.array([0,0]).reshape(-1,1)
         
         # Plot handles
         self.plot = plot
@@ -53,6 +54,9 @@ class Bicycle_2d:
             
         self.Xs = np.copy(self.X)
         self.Us = np.copy(self.U)
+        self.Xs_nominal = np.copy(self.X_nominal)
+        self.Us_nominal = np.copy(self.U_nominal)
+        self.store_counter = 0
         
         # to store constraints
         self.A = np.zeros((num_constraints,2))
@@ -100,8 +104,12 @@ class Bicycle_2d:
         self.X[2,0] = wrap_angle(self.X[2,0])
         if self.plot:
             self.render_plot()
-        self.Xs = np.append(self.Xs,self.X,axis=1)
-        self.Us = np.append(self.Us,self.U,axis=1)
+        if self.store_counter==5:
+            self.Xs = np.append(self.Xs,self.X,axis=1)
+            self.Us = np.append(self.Us,self.U,axis=1)
+            self.store_counter = 0
+        else:
+            self.store_counter = self.store_counter + 1
         return self.X
     
     def step_nominal(self,U): 
@@ -109,6 +117,9 @@ class Bicycle_2d:
         self.X_nominal = self.X_nominal + ( self.f_nominal() + self.g_nominal() @ self.U_nominal )*self.dt
         self.X_nominal[2,0] = wrap_angle(self.X_nominal[2,0])
         self.render_plot_nominal()
+        if self.store_counter==5:
+            self.Xs_nominal = np.append(self.Xs_nominal,self.X_nominal,axis=1)
+            self.Us_nominal = np.append(self.Us_nominal,self.U_nominal,axis=1)
         return self.X_nominal
     
     def render_plot(self):
@@ -262,7 +273,7 @@ if 0:
     
     for i in range(num_steps):
         
-        h1, dh1_dx = robot.agent_barrier( obs1, d_min )
+        h1, dh1_dx = robot.agent_barrier( obs2, d_min )
         h2, dh2_dx = robot.agent_barrier( obs2, d_min )
         V, dV_dx = robot.lyapunov( targetX )
         u_ref.value = robot.nominal_input( targetX )
@@ -282,5 +293,6 @@ if 0:
         
         fig.canvas.draw()
         fig.canvas.flush_events()
+        
         
         

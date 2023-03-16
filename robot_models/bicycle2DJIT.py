@@ -122,8 +122,8 @@ def bicycle2D_qp_constraints_jit(state, goal, obs1, obs2, param0, param1, param2
     A2 = dh2_dx @ g; b2 = dh2_dx @ f + param2 * h2      
     A2_1 = A2 * 0; b2_1 = h2_1
     
-    A = torch.cat( (A0, A1_1, A1, A2_1, A2), dim=0 )
-    b = torch.cat( (b0, b1_1, b1, b2_1, b2), dim=0 )
+    A = torch.cat( (A0, 1*A1_1, 1*A1, 1*A2_1, 1*A2), dim=0 )
+    b = torch.cat( (b0, 1*b1_1, 1*b1, 1*b2_1, 1*b2), dim=0 )
     # A = torch.cat( (A0, A1), dim=0 )
     # b = torch.cat( (b0, b1), dim=0 )
     return A, b

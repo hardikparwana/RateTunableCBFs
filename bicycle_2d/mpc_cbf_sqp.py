@@ -13,7 +13,7 @@ from robot_models.bicycle_2d import Bicycle_2d
 # warnings.filterwarnings("error")
 
 dt_inner = 0.01
-tf = 40
+tf = 3#40
 # N = int( tf/dt_inner )
 # N = 100#100
 # tf =  int( N * dt_inner ) #20
@@ -27,13 +27,14 @@ lr_alpha = 0.07#0.05
 
 plot_x_lim = (-1.0,3.5)  
 # plot_y_lim = (-0.8,3) 
-plot_y_lim = (-2.6,3)
+plot_y_lim = (-1.2,3.4)#(-2.6,3)
 
 # starting point
 # X_init = np.array([-0.5,-0.5,np.pi/2])
 d_obs = 0.3
 X_init = np.array([0.3,-1.0, np.pi/4, 0.1 ]) #-0.3,-0.5
 goalX = np.array([1.7,2.5]).reshape(-1,1) #2.5,2.0
+# obs1X = [0.7, 0.7]
 obs1X = [0.7, 0.7]
 obs2X = [2.0, 1.9]
 
@@ -342,48 +343,50 @@ def simulate_scenario( movie_name = 'test.mp4', adapt = True, enforce_input_cons
             
             
 # Run simulations#1,2,7
-fig1, ax1, robot1, rewards1, params1 = simulate_scenario( movie_name = 'bicycle_2d/figures/cs4_case1_rc.mp4', adapt=True, enforce_input_constraints=True, params = [1.0, 3.0, 10.0], plot_x_lim = plot_x_lim, plot_y_lim = plot_y_lim, offline = False, offline_iterations=20 )            
+
 # fig1, ax1, robot1, rewards1, params1 = simulate_scenario( movie_name = 'bicycle_2d/figures/cs4_case1_rc.mp4', adapt=True, enforce_input_constraints=True, params = [1.0, 1.0, 3.0], plot_x_lim = plot_x_lim, plot_y_lim = plot_y_lim, offline = False, offline_iterations=20 )            
 # fig1, ax1, robot1, rewards1, params1 = simulate_scenario( movie_name = 'RateTunableCBFs/bicycle_2d/figures/cs4_case1_rc.mp4', adapt=True, enforce_input_constraints=True, params = [1.0, 2.0, 3.0, 10.0], plot_x_lim = plot_x_lim, plot_y_lim = plot_y_lim, offline = False, offline_iterations=20 )            
-# fig2, ax2, robot2, rewards2, params2 = simulate_scenario( movie_name = 'bicycle_2d/figures/cs4_case2_rc.mp4', adapt=True, enforce_input_constraints=True, params = [0.5, 0.5, 0.5], plot_x_lim = plot_x_lim, plot_y_lim = plot_y_lim, offline = False, offline_iterations=20 )            
-# fig3, ax3, robot3, rewards3, params3 = simulate_scenario( movie_name = 'bicycle_2d/figures/cs4_case1_offline.mp4', adapt=True, enforce_input_constraints=True, params = [1.0, 3.0, 3.0], plot_x_lim = plot_x_lim, plot_y_lim = plot_y_lim, offline = True, offline_iterations=20 )            
-# fig4, ax4, robot4, rewards4, params4 = simulate_scenario( movie_name = 'bicycle_2d/figures/cs4_case2_offline.mp4', adapt=True, enforce_input_constraints=True, params = [0.5, 0.5, 0.5], plot_x_lim = plot_x_lim, plot_y_lim = plot_y_lim, offline = True, offline_iterations=20 )
+fig1, ax1, robot1, rewards1, params1 = simulate_scenario( movie_name = 'bicycle_2d/figures/cs4_case1_rc.mp4', adapt=True, enforce_input_constraints=True, params = [1.0, 3.0, 10.0], plot_x_lim = plot_x_lim, plot_y_lim = plot_y_lim, offline = False, offline_iterations=20 )            
+fig2, ax2, robot2, rewards2, params2 = simulate_scenario( movie_name = 'bicycle_2d/figures/cs4_case2_rc.mp4', adapt=True, enforce_input_constraints=True, params = [1.0, 1.0, 3.0], plot_x_lim = plot_x_lim, plot_y_lim = plot_y_lim, offline = False, offline_iterations=20 )            
+# fig3, ax3, robot3, rewards3, params3 = simulate_scenario( movie_name = 'bicycle_2d/figures/cs4_case1_offline.mp4', adapt=True, enforce_input_constraints=True, params = [1.0, 3.0, 10.0], plot_x_lim = plot_x_lim, plot_y_lim = plot_y_lim, offline = True, offline_iterations=20 )            
+# fig4, ax4, robot4, rewards4, params4 = simulate_scenario( movie_name = 'bicycle_2d/figures/cs4_case2_offline.mp4', adapt=True, enforce_input_constraints=True, params = [1.0, 1.0, 3.0], plot_x_lim = plot_x_lim, plot_y_lim = plot_y_lim, offline = True, offline_iterations=20 )
 
-# plt.ioff()
+plt.ioff()
 
-# with open('bicycle_2d/mpc_case1.npy', 'rb') as f:
-#     Xs = np.load(f)
+with open('bicycle_2d/mpc_case1.npy', 'rb') as f:
+    Xs = np.load(f)
     
-# fig, ax = plt.subplots(1,1)
-# ax.set_xlim( plot_x_lim )
-# ax.set_ylim( plot_y_lim )
+fig, ax = plt.subplots(1,1)
+ax.set_xlim( plot_x_lim )
+ax.set_ylim( plot_y_lim )
 
-# # Plot obstacles
-# circ = plt.Circle((obs1X[0],obs1X[1]),d_obs, linewidth = 1, edgecolor='k',facecolor='k')
-# ax.add_patch(circ)
-# circ2 = plt.Circle((obs2X[0],obs2X[1]),d_obs, linewidth = 1, edgecolor='k',facecolor='k')
-# ax.add_patch(circ2)
+# Plot obstacles
+circ = plt.Circle((obs1X[0],obs1X[1]),d_obs, linewidth = 1, edgecolor='k',facecolor='k')
+ax.add_patch(circ)
+circ2 = plt.Circle((obs2X[0],obs2X[1]),d_obs, linewidth = 1, edgecolor='k',facecolor='k')
+ax.add_patch(circ2)
 
-# # Plot MPC solution
-# ax.plot(Xs[0,1:], Xs[1,1:],'r', label='MPC')
+# Plot MPC solution
+ax.plot(Xs[0,1:], Xs[1,1:],'r', label='MPC')
 
-# # Plot new solution
+# Plot new solution
 
-# # Case 1
-# ax.plot(robot1.Xs_nominal[0,:], robot1.Xs_nominal[1,:], 'g', label='Nominal Case 1')
-# ax.plot(robot1.Xs[0,:], robot1.Xs[1,:], 'g.', label='RC Case 1')
+# Case 1
+ax.plot(robot1.Xs_nominal[0,:], robot1.Xs_nominal[1,:], 'g', label='Nominal Case 1')
+ax.plot(robot1.Xs[0,:], robot1.Xs[1,:], 'g.', label='RC Case 1', markersize=5)
 # ax.plot(robot3.Xs[0,:], robot3.Xs[1,:], 'g-.', label='Fixed tuned Case 1')
 
-# # Case 2
-# ax.plot(robot2.Xs_nominal[0,:], robot2.Xs_nominal[1,:], 'b', label='Nominal Case 2')
-# ax.plot(robot2.Xs[0,:], robot2.Xs[1,:], 'b.', label='RC Case 2')
+# Case 2
+ax.plot(robot2.Xs_nominal[0,:], robot2.Xs_nominal[1,:], 'b', label='Nominal Case 2')
+ax.plot(robot2.Xs[0,:], robot2.Xs[1,:], 'b.', label='RC Case 2', markersize=5)
 # ax.plot(robot4.Xs[0,:], robot4.Xs[1,:], 'b-.', label='Fixed tuned Case 2')
 
 
 
-# # Show plot
-# ax.legend()
-# fig.savefig("bicycle_2d/figures/cs4.png")
-# plt.show()
+# Show plot
+ax.legend()
+fig.savefig("bicycle_2d/figures/bicycle_comparison.png")
+fig.savefig("bicycle_2d/figures/bicycle_comparison.png")
+plt.show()
 
 
