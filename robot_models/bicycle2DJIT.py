@@ -107,19 +107,19 @@ def bicycle_compute_reward_jit(X,targetX, control):
     return 100 * torch.square( torch.norm( X[0:2,0] - targetX[0:2,0]  ) ) + torch.square( torch.norm(control) )
 traced_bicycle_compute_reward_jit = torch.jit.trace( bicycle_compute_reward_jit, ( torch.ones(7,1, dtype=torch.float), torch.ones(2,1, dtype=torch.float), torch.ones(2,1, dtype=torch.float) ) )
     
-def bicycle2D_qp_constraints_jit(state, goal, obs1, obs2, param0, param1, param2): #k, alpha1, alpha2, alpha3
+def bicycle2D_qp_constraints_jit(state, goal, obs1, obs2, param0, param1_1, param1_2, param2_1, param2_2): #k, alpha1, alpha2, alpha3
     # print("hell")
     V, dV_dx = bicycle_lyapunov_jit( state, goal )
-    h1_1, h1, dh1_dx = bicycle_barrier_jit( state, obs1, param1  )
-    h2_1, h2, dh2_dx = bicycle_barrier_jit( state, obs2, param1  )
+    h1_1, h1, dh1_dx = bicycle_barrier_jit( state, obs1, param1_1  )
+    h2_1, h2, dh2_dx = bicycle_barrier_jit( state, obs2, param2_1  )
     f = bicycle_f_torch_jit(state)
     g = bicycle_g_torch_jit(state)
     A0 = -dV_dx @ g; b0 = -dV_dx @ f - param0 * V
     
-    A1 = dh1_dx @ g; b1 = dh1_dx @ f + param2 * h1
+    A1 = dh1_dx @ g; b1 = dh1_dx @ f + param1_2 * h1
     A1_1 = A1 * 0; b1_1 = h1_1
     
-    A2 = dh2_dx @ g; b2 = dh2_dx @ f + param2 * h2      
+    A2 = dh2_dx @ g; b2 = dh2_dx @ f + param2_2 * h2      
     A2_1 = A2 * 0; b2_1 = h2_1
     
     A = torch.cat( (A0, 1*A1_1, 1*A1, 1*A2_1, 1*A2), dim=0 )
@@ -127,4 +127,4 @@ def bicycle2D_qp_constraints_jit(state, goal, obs1, obs2, param0, param1, param2
     # A = torch.cat( (A0, A1), dim=0 )
     # b = torch.cat( (b0, b1), dim=0 )
     return A, b
-traced_bicycle2D_qp_constraints_jit = torch.jit.trace( bicycle2D_qp_constraints_jit, ( torch.ones(4,1, dtype=torch.float), torch.zeros(2,1, dtype=torch.float), torch.ones(2,1, dtype=torch.float), torch.ones(2,1, dtype=torch.float), torch.tensor(0.5, dtype=torch.float), torch.tensor(0.5, dtype=torch.float), torch.tensor(0.5, dtype=torch.float) ) )
+traced_bicycle2D_qp_constraints_jit = torch.jit.trace( bicycle2D_qp_constraints_jit, ( torch.ones(4,1, dtype=torch.float), torch.zeros(2,1, dtype=torch.float), torch.ones(2,1, dtype=torch.float), torch.ones(2,1, dtype=torch.float), torch.tensor(0.5, dtype=torch.float), torch.tensor(0.5, dtype=torch.float), torch.tensor(0.5, dtype=torch.float), torch.tensor(0.5, dtype=torch.float), torch.tensor(0.5, dtype=torch.float) ) )

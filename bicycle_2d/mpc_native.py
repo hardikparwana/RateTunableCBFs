@@ -13,11 +13,11 @@ m = 2
 # starting point
 x0 = np.zeros((N-1)*(n+m)+n)
 # X_init = np.array([0.5,-0.5, 0, 0.1])
-X_init = np.array([0.3,-1.0, np.pi/4, 0.1])
+X_init = np.array([-0.5,-0.5, np.pi/4, 0.1])#np.array([0.3,-1.0, np.pi/4, 0.1])
 obsX = np.array([0.7,0.7])
-obsX2 = np.array([2.0,1.9]) #1.5,1.9
+obsX2 = np.array([1.5,1.9]) #2.0,1.9
 d_obs = 0.3
-goalX = np.array([1.7,2.5])#2,3
+goalX = np.array([2.0, 2.0])#np.array([1.7,2.5])#2,3
 u1_max_square = 5*5
 u2_max_square = 5*5
 
@@ -199,8 +199,10 @@ for i in range(N-1):
     # ui = x[(n+m)*i+n:(n+m)*i+n+m]
     
 fig, ax = plt.subplots(1,1)
-plot_x_lim = (-0.5,2.5)  
-plot_y_lim = (-0.5,2.5) 
+# plot_x_lim = (-0.5,2.5)  
+# plot_y_lim = (-0.5,2.5) 
+plot_x_lim = (-1.0,2.5)  
+plot_y_lim = (-0.8,3.5) 
 ax.set_xlim( plot_x_lim )
 ax.set_ylim( plot_y_lim )
 circ = plt.Circle((obsX[0],obsX[1]),d_obs, linewidth = 1, edgecolor='k',facecolor='k')
