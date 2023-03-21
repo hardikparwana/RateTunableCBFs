@@ -53,8 +53,10 @@ def si2D_qp_constraints_jit(state, goal, obs1, obs2, param0, param1, param2):
     f = si_f_torch_jit(state)
     g = si_g_torch_jit(state)
     A0 = -dV_dx @ g; b0 = -dV_dx @ f - param0 * V
-    A1 = dh1_dx @ g; b1 = dh1_dx @ f + param1 * torch.pow(h1,3)
-    A2 = dh2_dx @ g; b2 = dh2_dx @ f + param2 * torch.pow(h2,3)        
+    # A1 = dh1_dx @ g; b1 = dh1_dx @ f + torch.pow(h1,param1)
+    # A2 = dh2_dx @ g; b2 = dh2_dx @ f + torch.pow(h2,param2)   
+    A1 = dh1_dx @ g; b1 = dh1_dx @ f + param1 * torch.pow(h1,1)
+    A2 = dh2_dx @ g; b2 = dh2_dx @ f + param2 * torch.pow(h2,1)        
     A = torch.cat( (A0, A1, A2), dim=0 )
     b = torch.cat( (b0, b1, b2), dim=0 )
     return A, b

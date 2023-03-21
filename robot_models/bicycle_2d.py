@@ -179,7 +179,7 @@ class Bicycle_2d:
         theta = self.X[2,0]
         v = self.X[3,0]
         
-        k_omega = 2.0 #0.5#2.5
+        k_omega = 5.0 #0.5#2.5
         k_v = 3.0 #2.0 #0.5
         
         theta_d = np.arctan2(target[1,0]-self.X[1,0],target[0,0]-self.X[0,0])
@@ -236,7 +236,7 @@ class Bicycle_2d:
 if 0:
     plt.ion()
     fig = plt.figure()
-    ax = plt.axes( xlim = (-2,2), ylim = (-2,2) )
+    ax = plt.axes( xlim = (-2,2.5), ylim = (-2,2.5) )
     ax.set_xlabel("X")
     ax.set_ylabel("Y")
     ax.set_aspect(1)
@@ -244,21 +244,26 @@ if 0:
     dt = 0.01
     tf = 20
     num_steps = int(tf/dt)
-    alpha1 = 2.0
-    alpha2 = 7.0
-    robot = Bicycle_2d( np.array([-0.5,-1.5,0,0.1]).reshape(-1,1), dt, ax, alpha1 = alpha1 )
+    alpha1 = 9.0
+    alpha2 = 13.0
+    robot = Bicycle_2d( np.array([-0.5,-0.5, np.pi/2, 0.1]).reshape(-1,1), dt, ax, alpha1 = alpha1 )
+    # robot = Bicycle_2d( np.array([-0.5,-1.5,0,0.1]).reshape(-1,1), dt, ax, alpha1 = alpha1 )
     # 1,3,5 ok.. from top
     # 2,3,10 better
-    obsX = [0.5, 0.5]
+    # obsX = [0.5, 0.5]
+    # obs2X = [1.5, 1.9]
+    # targetX = np.array([0.9, 0.9]).reshape(-1,1)
+    obsX = [0.7, 0.7]
     obs2X = [1.5, 1.9]
-    targetX = np.array([0.9, 0.9]).reshape(-1,1)
+    targetX = np.array([2.0,2.0]).reshape(-1,1)
+    
     d_min = 0.3
     obs1 = circle2D(obsX[0], obsX[1], d_min, ax, 0)
     obs2 = circle2D(obs2X[0], obs2X[1], d_min, ax, 0)
     
     ax.scatter(targetX[0,0], targetX[1,0],c='g')
     
-    num_constraints = 2
+    num_constraints = 3
     u = cp.Variable((2,1))
     u_ref = cp.Parameter((2,1), value = np.zeros((2,1)))
     A1 = cp.Parameter((num_constraints,2), value = np.zeros((num_constraints,2)))
@@ -273,15 +278,17 @@ if 0:
     
     for i in range(num_steps):
         
-        h1, dh1_dx = robot.agent_barrier( obs2, d_min )
+        h1, dh1_dx = robot.agent_barrier( obs1, d_min )
         h2, dh2_dx = robot.agent_barrier( obs2, d_min )
         V, dV_dx = robot.lyapunov( targetX )
         u_ref.value = robot.nominal_input( targetX )
         # print(f"V:{V}, dV_dx:{dV_dx}")
         A1.value[0,:] = 1.0*(-dV_dx @ robot.g())
         A1.value[1,:] = 1.0*(dh1_dx @ robot.g())
+        A1.value[2,:] = 1.0*(dh2_dx @ robot.g())
         b1.value[0,:] = 1.0*(-dV_dx @ robot.f() - 1.0 * V )
         b1.value[1,:] = 1.0*(dh1_dx @ robot.f() + alpha2 * h1)
+        b1.value[2,:] = 1.0*(dh2_dx @ robot.f() + alpha2 * h2)
         cbf_controller.solve()#solver=cp.GUROBI, reoptimize=True)
         
         if cbf_controller.status!='optimal':

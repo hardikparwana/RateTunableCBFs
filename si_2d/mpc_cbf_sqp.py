@@ -17,8 +17,10 @@ num_gd_iterations = 5
 dt_outer = 0.1
 H = 20#10#100
 lr_alpha = 0.1#0.05
-plot_x_lim = (-1.0,2.5)  
-plot_y_lim = (-0.8,2.5) 
+# plot_x_lim = (-1.0,2.5)  
+# plot_y_lim = (-0.8,2.5) 
+plot_x_lim = (-0.8,2.7)  
+plot_y_lim = (-0.8,2.7) 
 
 # starting point
 # X_init = np.array([-0.5,-0.5,np.pi/2])
@@ -29,8 +31,8 @@ obs1X = [0.7, 0.7]
 obs2X = [1.5, 1.9]
 
 # input bounds
-u1_max = 2
-u2_max = 5
+u1_max = 3
+u2_max = 3
 
 
 ##  Define Controller ################
@@ -279,6 +281,8 @@ fig, ax = plt.subplots(1,1)
 ax.set_xlim( plot_x_lim )
 ax.set_ylim( plot_y_lim )
 
+ax.set_aspect('equal', 'box')
+
 # Plot obstacles
 circ = plt.Circle((obs1X[0],obs1X[1]),d_obs, linewidth = 1, edgecolor='k',facecolor='k')
 ax.add_patch(circ)
@@ -299,11 +303,12 @@ ax.plot(robot3.Xs[0,:], robot3.Xs[1,:], 'g-.', label='Fixed tuned Case 1')
 ax.plot(robot2.Xs_nominal[0,:], robot2.Xs_nominal[1,:], 'b', label='Nominal Case 2')
 ax.plot(robot2.Xs[0,:], robot2.Xs[1,:], 'b.', label='RC Case 2')
 ax.plot(robot4.Xs[0,:], robot4.Xs[1,:], 'b-.', label='Fixed tuned Case 2')
-
-
+ax.set_xlabel("X")
+ax.set_ylabel("Y")
 
 # Show plot
 ax.legend()
+ax.grid()
 fig.savefig("si_2d/figures/cs4.png")
 plt.show()
 

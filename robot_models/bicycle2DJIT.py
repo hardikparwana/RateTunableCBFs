@@ -66,9 +66,9 @@ def bicycle_barrier_jit(X, targetX, alpha1):#, min_D = torch.tensor(0.3, dtype=t
     h2 = h_dot + alpha1 * h
     dh2_dx = dh_dot_dx + alpha1 * dh_dx
     
-    return h.reshape(-1,1), h2, dh2_dx
+    return h.reshape(-1,1), h2.reshape(-1,1), dh2_dx
 
-def bicycle2D_nominal_input_jit(X,target):
+def bicycle2D_nominal_input_jit(X,target, k_v=torch.tensor(3.0, dtype=torch.float), k_omega=torch.tensor(5.0, dtype=torch.float),):
     
         x = X[0,0]
         y = X[1,0]
@@ -76,8 +76,8 @@ def bicycle2D_nominal_input_jit(X,target):
         v = X[3,0]
         d_min = torch.tensor(0.01, dtype=torch.float)
         
-        k_omega = torch.tensor(2.0, dtype=torch.float) #0.5#2.5
-        k_v = torch.tensor(3.0, dtype=torch.float) #2.0 #0.5
+        # k_omega = torch.tensor(5.0, dtype=torch.float) #0.5#2.5
+        # k_v = torch.tensor(3.0, dtype=torch.float) #2.0 #0.5
         
         theta_d = torch.atan2(target[1,0]-X[1,0],target[0,0]-X[0,0])
         error_angle = theta_d - X[2,0]
@@ -92,7 +92,7 @@ def bicycle2D_nominal_input_jit(X,target):
         # print(f"u_r;{u_r}, omega:{omega}")
         return torch.cat((u_r.reshape(-1,1), omega.reshape(-1,1)), dim=0)
     
-traced_bicycle2D_nominal_input_jit = torch.jit.trace( bicycle2D_nominal_input_jit, ( torch.ones(4,1, dtype=torch.float), torch.zeros(2,1, dtype=torch.float) ) ) 
+traced_bicycle2D_nominal_input_jit = torch.jit.trace( bicycle2D_nominal_input_jit, ( torch.ones(4,1, dtype=torch.float), torch.zeros(2,1, dtype=torch.float), torch.tensor(0.5, dtype=torch.float), torch.tensor(0.5, dtype=torch.float) ) ) 
             
 def bicycle_lyapunov_jit(X, G):
     # print("hell1")
@@ -117,9 +117,10 @@ def bicycle2D_qp_constraints_jit(state, goal, obs1, obs2, param0, param1_1, para
     A0 = -dV_dx @ g; b0 = -dV_dx @ f - param0 * V
     
     A1 = dh1_dx @ g; b1 = dh1_dx @ f + param1_2 * h1
+    # A1 = dh1_dx @ g; b1 = dh1_dx @ f + param1_2 * torch.pow(h1,3)
     A1_1 = A1 * 0; b1_1 = h1_1
     
-    A2 = dh2_dx @ g; b2 = dh2_dx @ f + param2_2 * h2      
+    A2 = dh2_dx @ g; b2 = dh2_dx @ f + param2_2 * h2#torch.pow(h2,3)
     A2_1 = A2 * 0; b2_1 = h2_1
     
     A = torch.cat( (A0, 1*A1_1, 1*A1, 1*A2_1, 1*A2), dim=0 )

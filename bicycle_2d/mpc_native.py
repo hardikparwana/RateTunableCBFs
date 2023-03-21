@@ -7,18 +7,18 @@ import time
 # outfile = TemporaryFile()
 
 dt = 0.02
-N = int(3/dt)#100#200#50
+N = int(2.5/dt)#100#200#50
 n = 4
 m = 2
 # starting point
 x0 = np.zeros((N-1)*(n+m)+n)
 # X_init = np.array([0.5,-0.5, 0, 0.1])
-X_init = np.array([-0.5,-0.5, np.pi/4, 0.1])#np.array([0.3,-1.0, np.pi/4, 0.1])
+X_init = np.array([-0.5,-0.5, np.pi/6, 0.1])#np.array([0.3,-1.0, np.pi/4, 0.1])
 obsX = np.array([0.7,0.7])
 obsX2 = np.array([1.5,1.9]) #2.0,1.9
 d_obs = 0.3
 goalX = np.array([2.0, 2.0])#np.array([1.7,2.5])#2,3
-u1_max_square = 5*5
+u1_max_square = 2*2#5*5
 u2_max_square = 5*5
 
 def step(x,u): # states: x,y,phi,u,v,r
