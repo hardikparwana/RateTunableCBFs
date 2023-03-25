@@ -11,6 +11,9 @@
 
 ### Scenario 2: trust based Adaptation
 No Adaptation
+
 ![trust_fixed_parameter](https://user-images.githubusercontent.com/19849515/227721066-e2492b6c-eb11-4a0a-86df-677381d555c3.gif) 
+
 With adaptation
+
 ![trust_adaptive](https://user-images.githubusercontent.com/19849515/227721079-a36a6ab0-cb4d-4f57-84d8-bf4628020085.gif)
