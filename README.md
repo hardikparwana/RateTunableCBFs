@@ -3,6 +3,9 @@
 ## Simulation Results
 
 ## Leader follower
+The follower's objective is to keep leader inside the field of view(FoV) while maximizing the reward which maximum when leader is at the center of FoV. The leader moves independently and therefore FoV is a time-varying constraint for the follower. Our proposed method is able to adapt the parameters for better performance. 
+
+When no input bounds are imposed, the proposed method is better able to maintain the leader at center of FoV. When input bounds are present, the default CBF parameters fail to ensure a solution of QP controller soon after the simulation starts. The proposed method on the other hand is able to quickly adapt parameters to maintain FoV constraint while still satisfying input bounds. Due to limited actuation, the algorithm learns that it is not feasible to focus on performance and moves in almost a straight line which ensures that leader remains inside FoV.
 
 |  | No Adaptation | With adaptation |
 | --------------| -------------------| -----------------|
