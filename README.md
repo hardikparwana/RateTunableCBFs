@@ -14,12 +14,15 @@ When no input bounds are imposed, the proposed method is better able to maintain
 
 
 ## Trust based Adaptation
-### Scenario 1:
+
+Unicycles and double integrator ego agents navigate in presence of single integrator modeled adversaries and uncooperative agents in 2D and 3D.
+
+### Scenario 1(2D):
 | Constant CBF parameter | Trust based adaptation |
 | --------------| -------------------|
 | ![no_adapt](https://user-images.githubusercontent.com/19849515/227721767-75d395db-ca03-47b3-a1cd-08284ad61e6d.gif)| ![trust_adapt](https://user-images.githubusercontent.com/19849515/227721791-3695f2fa-b748-4309-92fa-3d8fb2dfe6f3.gif) |
 
-### Scenario 2: 
+### Scenario 2(3D): 
 | Constant CBF parameter | Trust based adaptation |
 | --------------| -------------------|
 | ![trust_fixed_parameter](https://user-images.githubusercontent.com/19849515/227721066-e2492b6c-eb11-4a0a-86df-677381d555c3.gif) | ![trust_adaptive](https://user-images.githubusercontent.com/19849515/227721079-a36a6ab0-cb4d-4f57-84d8-bf4628020085.gif) |
