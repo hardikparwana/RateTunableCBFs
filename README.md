@@ -1,4 +1,5 @@
 # RateTunableCBFs
+This repository supplements our paper [Rate-Tunable Control Barrier Functions: Methods and Algorithms for Online Adaptation ](https://arxiv.org/abs/2303.12966). Simulation videos are provided below. More Instructions to run the code will be added soon!
 
 ## Simulation Results
 
