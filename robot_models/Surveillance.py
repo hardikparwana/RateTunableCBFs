@@ -47,22 +47,52 @@ class Surveillance:
         self.coneP = np.append( self.coneX.reshape(1,-1), self.coneY.reshape(1,-1), axis=0 )
         self.coneP = np.append( self.coneP, self.coneZ.reshape(1,-1), axis=0 )
         
+        # Extra View point
+        self.height = height
+        self.height_agent = self.height/2
+        if self.height_agent < self.height:
+            height2 = self.height - self.height_agent
+        else:
+            height2 = 0.0
+        # height2 = self.height - self.height_agent
+        theta = np.linspace(0, 2 * np.pi, 201)
+        r2 = height2*np.tan(cone_angle) - 0.5
+        circle_x2 = r2*np.cos( theta )
+        circle_y2 = r2*np.sin( theta )
+        circle_z2 = self.height_agent * np.ones(201)
+        # self.cone_length2 = cone_length
+        # r2 = np.linspace( 0, height2*np.tan(cone_angle), self.cone_resolution )  # radius changes from 0 to Max value
+        # h2 = np.linspace( 0, height2, self.cone_resolution )
+        # th2 = np.linspace( 0, 2*np.pi, self.cone_resolution )
+        # R2, T2 = np.meshgrid( r2, th2 )
+        # H2, T2 = np.meshgrid( h2, th2 )
+        # self.coneX2 = R2 * np.cos(T2)
+        # self.coneY2 = R2 * np.sin(T2)
+        # self.coneZ2 = -H2
+        # self.coneP2 = np.append( self.coneX2.reshape(1,-1), self.coneY2.reshape(1,-1), axis=0 )
+        # self.coneP2 = np.append( self.coneP2, self.coneZ2.reshape(1,-1), axis=0 )
+        
         # Plot handles
         self.plot = plot
         self.plot_nominal = nominal_plot
         if self.plot:
             self.body = ax.scatter([],[],[],c=self.color,alpha=palpha,s=40)
             self.cone = ax.plot_surface(self.coneX, self.coneY, self.coneZ, alpha=0.4,linewidth=0, color = self.color)#, cmap=cm.coolwarm)
+            # self.cone2 = ax.plot_surface(self.coneX2, self.coneY2, self.coneZ2, alpha=0.8,linewidth=0, color = self.color)#, cmap=cm.coolwarm)
+            self.circle = ax.plot(self.X[0,0]+circle_x2, self.X[1,0]+circle_y2, circle_z2, color=self.color)
             self.render_plot()
-        if self.plot_nominal:
-            self.body_nominal = ax.scatter([],[],[],c=self.color,alpha=palpha,s=40)
-            self.render_plot_nominal()
+        # if self.plot_nominal:
+        #     self.body_nominal = ax.scatter([],[],[],c=self.color,alpha=palpha,s=40)
+        #     self.render_plot_nominal()
             
         self.Xs = np.copy(self.X)
         self.Us = np.copy(self.U)
         
         self.U_ref = np.array([0,0]).reshape(-1,1)
         self.U_nominal = np.array([0,0]).reshape(-1,1)
+        
+    def set_agent_height(self, height):
+        self.height_agent = height
         
     def f(self):
         return np.array([0,0,0,0,0,0]).reshape(-1,1)
@@ -109,7 +139,21 @@ class Surveillance:
             self.cone.remove()
             self.cone = self.ax.plot_surface( xmesh, ymesh, zmesh, alpha=0.4,linewidth=0, color=self.color )
             
+            if self.height_agent < self.height:
+                height2 = self.height - self.height_agent
+            else:
+                height2 = 0.0
+            theta = np.linspace(0, 2 * np.pi, 201)
+            r2 = max(height2*np.tan(self.cone_angle) - 0.1, 0.0)
+            circle_x2 = x[0]+r2*np.cos( theta )
+            circle_y2 = x[1]+r2*np.sin( theta )
+            circle_z2 = self.height_agent * np.ones(201)
+            self.circle[0].set_xdata( circle_x2 ) #= (circle_x2, circle_y2, circle_z2)
+            self.circle[0].set_ydata( circle_y2 )
+            self.circle[0].set_3d_properties( circle_z2 )
+            
     def render_plot_nominal(self):
+        return
         if self.plot_nominal:
             x = np.array([self.X[0,0],self.X[1,0],self.X[2,0]])
             self.body_nominal._offsets3d = ([[x[0]],[x[1]],[x[2]]])

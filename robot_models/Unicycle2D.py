@@ -29,9 +29,10 @@ class Unicycle2D:
         # Plot handles
         self.plot = plot
         self.plot_nominal = nominal_plot
+        self.radii = 1.0
         if self.plot:
             self.body = ax.scatter([],[],[],alpha=palpha,s=60,facecolors=self.color,edgecolors=self.color) #facecolors='none'
-            self.radii = 1.0
+            
             self.palpha = palpha
             if palpha==1:
                 self.axis = ax.plot([self.X[0,0],self.X[0,0]+self.radii*np.cos(self.X[3,0])],[self.X[1,0],self.X[1,0]+self.radii*np.sin(self.X[3,0])],[0,0], color=self.color)

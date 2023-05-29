@@ -32,8 +32,10 @@ ax = plt.axes(projection ="3d",xlim=(-5,5),ylim=(-5,5), zlim=(-0.01,2.0))
 ax.set_xlabel('X')
 ax.set_ylabel('Y')
 ax.set_zlabel('Z')
+# plt.axis('off')
+# ax.set_zticks([])
 ax.set_box_aspect([1,1,2.0/10])
-
+# ax.view_init(90, 0)
 # Set ground plane
 length = 5
 height = -0.1
@@ -48,24 +50,25 @@ robots = []
 cone_angle = np.pi/6       
 height = 2.0
 
-nominal_plot = True
+nominal_plot = False
+robot_plot = True
 num_robots = 6
 num_constraints = num_robots - 1
 
 
 # Adversary
-robots.append( SingleIntegrator3D(np.array([-3,1,0]), dt, ax, id = 0, nominal_plot = nominal_plot, alpha = alpha, grounded = True, color = 'k', mode='adversary', target = 1, num_robots = num_robots, num_constraints = num_constraints ) )
+robots.append( SingleIntegrator3D(np.array([-3,1,0]), dt, ax, id = 0, nominal_plot = nominal_plot, alpha = alpha, grounded = True, color = 'k', mode='adversary', target = 1, num_robots = num_robots, num_constraints = num_constraints, plot = robot_plot ) )
 
 # Ego
-robots.append( Unicycle2D( np.array([0,-2,0, np.pi/2]), dt, ax, id = 1, nominal_plot = nominal_plot, color='b', alpha = alpha, mode='ego', target = np.array([1.2,0]).reshape(-1,1), num_robots = num_robots, num_constraints = num_constraints) )
-robots.append( Unicycle2D( np.array([-1.5,-3,0, np.pi/2]), dt, ax, id = 2, nominal_plot = nominal_plot, color='b', alpha = alpha, mode='ego', target = np.array([1.2,0]).reshape(-1,1), num_robots = num_robots, num_constraints = num_constraints ) )
+robots.append( Unicycle2D( np.array([0,-2,0, np.pi/2]), dt, ax, id = 1, nominal_plot = nominal_plot, color='b', alpha = alpha, mode='ego', target = np.array([1.2,0]).reshape(-1,1), num_robots = num_robots, num_constraints = num_constraints, plot = robot_plot) )
+robots.append( Unicycle2D( np.array([-1.5,-3,0, np.pi/2]), dt, ax, id = 2, nominal_plot = nominal_plot, color='b', alpha = alpha, mode='ego', target = np.array([1.2,0]).reshape(-1,1), num_robots = num_robots, num_constraints = num_constraints, plot = robot_plot ) )
 
 # Noncooperative
-robots.append( Surveillance(np.array([4,2,height,0,0,0]), dt, ax, id = 3, cone_length = height/np.cos(cone_angle), cone_angle = cone_angle, mode = 'uncooperative', target = np.array([-1,0,0,0,0,0]).reshape(-1,1), num_robots = num_robots, num_constraints = num_constraints) )
+robots.append( Surveillance(np.array([4,2,height,0,0,0]), dt, ax, id = 3, cone_length = height/np.cos(cone_angle), cone_angle = cone_angle, mode = 'uncooperative', target = np.array([-1,0,0,0,0,0]).reshape(-1,1), num_robots = num_robots, num_constraints = num_constraints, plot = robot_plot) )
 
 # higher order ego
-robots.append( DoubleIntegrator3D( np.array([-4,-2,0,0,0,0]), dt, ax, nominal_plot = nominal_plot, id = 4, color='g', alpha = alpha, mode='ego', target = np.array([0.6,0.6,0.1]).reshape(-1,1), num_robots = num_robots, num_constraints = num_constraints  ) )
-robots.append( DoubleIntegrator3D( np.array([-4,2.2,0.5,0,0,0]), dt, ax, nominal_plot = nominal_plot, id = 4, color='g', alpha = alpha, mode='ego', target = np.array([0.6,0.0,0.0]).reshape(-1,1), num_robots = num_robots, num_constraints = num_constraints  ) )
+robots.append( DoubleIntegrator3D( np.array([-4,-2,0,0,0,0]), dt, ax, nominal_plot = nominal_plot, id = 4, color='g', alpha = alpha, mode='ego', target = np.array([0.6,0.6,0.1]).reshape(-1,1), num_robots = num_robots, num_constraints = num_constraints, plot = robot_plot  ) )
+robots.append( DoubleIntegrator3D( np.array([-4,2.2,0.5,0,0,0]), dt, ax, nominal_plot = nominal_plot, id = 4, color='g', alpha = alpha, mode='ego', target = np.array([0.6,0.0,0.0]).reshape(-1,1), num_robots = num_robots, num_constraints = num_constraints, plot = robot_plot  ) )
 
 # plt.ioff()
 # plt.show()
@@ -131,7 +134,7 @@ best_controllerT3 = cp.Problem( objectiveT3, constT3 )
 metadata = dict(title='Movie Test', artist='Matplotlib',comment='Movie support!')
 writer = FFMpegWriter(fps=12, metadata=metadata)
 
-with writer.saving(fig, 'scenario1/take1.mp4', 100): 
+with writer.saving(fig, 'scenario1/take1_adaptive.mp4', 100): 
 
     for t in range(T):    
         # nominal motions of agents: only to define nominal trajectory
@@ -284,6 +287,27 @@ with writer.saving(fig, 'scenario1/take1.mp4', 100):
                     if cbf_controller3.status != 'optimal':
                         print("Error: QP not feasible")
                     robots[i].step( u3.value )
+            if i==3:
+                GX = np.copy(robots[3].X)
+                radii = 0
+                if robots[4].X[2,0] < GX[2,0]: # lower height than the 
+                    radii =  (GX[2,0]-robots[4].X[2,0]) * np.tan(robots[3].cone_angle)
+                    GX[2,0] = robots[4].X[2,0]                
+                h4 = np.linalg.norm( robots[4].X[0:3] - GX[0:3] )**2 - (d_min + radii)**2
+                
+                GX = np.copy(robots[3].X)
+                radii = 0
+                if robots[5].X[2,0] < GX[2,0]: # lower height than the 
+                    radii =  (GX[2,0]-robots[5].X[2,0]) * np.tan(robots[3].cone_angle)
+                    GX[2,0] = robots[5].X[2,0]                
+                h5 = np.linalg.norm( robots[5].X[0:3] - GX[0:3] )**2 - (d_min + radii)**2
+                
+                if h4<h5:
+                    robots[i].set_agent_height( robots[4].X[2,0] )
+                else:
+                    robots[i].set_agent_height( robots[5].X[2,0] )
+                    
+                    
             robots[i].render_plot()
             
             
