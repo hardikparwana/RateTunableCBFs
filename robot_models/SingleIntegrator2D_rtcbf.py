@@ -26,7 +26,7 @@ class SingleIntegrator2D:
         self.plot = plot
         if self.plot:
             self.ax = ax
-            self.body = ax.scatter([],[],[],c=color,alpha=palpha,s=30)
+            self.body = ax.scatter([],[],c=color,alpha=palpha,s=30)
             self.render_plot()
         self.Xs = np.copy(self.X)
         self.Us = np.copy(self.U)
@@ -49,11 +49,17 @@ class SingleIntegrator2D:
 
     def render_plot(self):
         if self.plot:
-            x = np.array([self.X[0,0],self.X[1,0],0])
-            self.body._offsets3d = ([[x[0]],[x[1]],[x[2]]])
+            x = np.array([self.X[0,0],self.X[1,0]])
+            self.body.set_offsets([x[0],x[1]])
             
     def lyapunov(self, G):
         V = np.linalg.norm( self.X - G )**2
         dV_dxi = 2*( self.X - G ).T
         dV_dxj = -2*( self.X - G ).T
         return V, dV_dxi, dV_dxj
+    
+    def obstacle_barrier(self, agent, d_min, ):
+        h = np.linalg.norm( self.X[0:2] - agent.X[0:2] )**2 - d_min**2
+        dh_dxi = 2 * (self.X[0:2] - agent.X[0:2] ).T
+        dh_dxj = -2 * (self.X[0:2] - agent.X[0:2] ).T
+        return h, dh_dxi, dh_dxj
