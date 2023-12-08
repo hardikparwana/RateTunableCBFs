@@ -23,8 +23,8 @@ alpha_nom = 0.5#1.0
 obs = []
 obs.append( SingleIntegrator2D(np.array([-2,0]), dt, ax, id = 0, color = 'k' ) )
 obs.append( SingleIntegrator2D(np.array([ 3,0]), dt, ax, id = 1, color = 'k' ) )
-# obs.append( SingleIntegrator2D(np.array([ 0,3]), dt, ax, id = 2, color = 'k' ) )
-# obs.append( SingleIntegrator2D(np.array([ 0,-3]), dt, ax, id = 3, color = 'k' ) )
+obs.append( SingleIntegrator2D(np.array([ 0,3]), dt, ax, id = 2, color = 'k' ) )
+obs.append( SingleIntegrator2D(np.array([ 0,-3]), dt, ax, id = 3, color = 'k' ) )
 alpha = alpha_nom * np.ones(len(obs))
 alpha_bound = [0] * len(obs)
 
@@ -70,8 +70,10 @@ for t in range(T):
     
     obs[0].step( np.array([1.5, 0.0]) )  #step( np.array([0.5+1.0*np.exp(-t*dt*0.), 0.0]) ) # left
     obs[1].step( np.array([0.5, 0.0]) ) # right 
-    # obs[2].step( np.array([0.9, -0.4]) ) # top
+    # obs[2].step( np.array([0.9, -0.9]) ) # top
     # obs[3].step( np.array([0.9, 0.4]) ) # bottom
+    obs[2].step( np.array([0.9, -0.9]) ) # top
+    obs[3].step( np.array([0.9, 0.0]) ) # bottom
     
     for j in range(len(obs)):
         h, dh_dxi, dh_dxj = robot.obstacle_barrier(obs[j], d_min)
@@ -149,9 +151,14 @@ for t in range(T):
         b2.value[j,:] = -dh_dxi @ robot.f() - alpha[j] * h - dh_dxj @ obs[j].xdot
     u2_ref.value = - 1.5 * ( robot.X - goal )
     
-    cbf_controller2.solve( solver=cp.GUROBI, reoptimize=True )
-    if cbf_controller2.status!='optimal':
-        print(f"CBF-QP infeasible: {cbf_controller2.status}")
+    try:
+        cbf_controller2.solve( solver=cp.GUROBI, reoptimize=True )
+        if cbf_controller2.status!='optimal':
+            print(f"CBF-QP infeasible: {cbf_controller2.status}")
+            exit()
+    except Exception as e:
+        print(f"error: {e}")
+        cbf_controller2.solve( solver=cp.GUROBI, reoptimize=True, verbose=True )
         exit()
         
     robot.step( u2.value )
