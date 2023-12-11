@@ -27,7 +27,7 @@ alpha_nom = 0.2#2000.0
 k = 1000#2000.0
 
 # Robot
-robot = ACC2D(np.array([22,5,150]), dt, ax, id = 0, color = 'g' ) #18,10,150
+robot = ACC2D(np.array([22,5,100]), dt, ax, id = 0, color = 'g' ) #18,10,150
 
 # Controller
 max_u = robot. af * robot.m * robot.gr / 2

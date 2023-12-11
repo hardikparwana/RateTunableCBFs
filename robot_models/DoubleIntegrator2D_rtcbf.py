@@ -59,7 +59,7 @@ class DoubleIntegrator2D:
         return V, dV_dxi, dV_dxj
     
     def obstacle_barrier(self, agent, d_min, ):
-        h = np.linalg.norm( self.X[0:2] - agent.X[0:2] )**2 - d_min**2\
+        h = np.linalg.norm( self.X[0:2] - agent.X[0:2] )**2 - d_min**2
         
         # assert(h>=-0.02)
         # if (h<=0):
