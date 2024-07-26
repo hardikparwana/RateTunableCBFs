@@ -12,7 +12,7 @@ ax = plt.axes()
 ax.set_xlabel('time (s)')
 ax.set_title('Velocity')
 
-name = "test1_3_"
+name = "test1_4_"
 
 fig2, ax2 = plt.subplots(7,1)
 ax2[0].set_title('Barrier')
@@ -23,16 +23,16 @@ ax2[2].set_title('Velocity')
 ax2[2].set_xlabel('time (s)')
 
 # sim parameters
-dt = 0.1 #0.05
+dt = 0.05
 tf = 50#8
 d_min = 0.3
 T = int( tf/dt )
 alpha_nom = 0.2#2000.0
 k = 10#1000#2000.0
 
-alpha11 = 0.5
+alpha11 = 0.3 #0.5
 alpha11_dot = 0
-alpha11_nom = 0.5
+alpha11_nom = 0.3 #0.5
 
 alpha12 = 0.7
 alpha12_nom = 0.7
@@ -68,8 +68,8 @@ alpha2_cp = cp.Variable((4,1), value=np.zeros((4,1)))
 alpha2_ref_cp = cp.Parameter((4,1), value=alpha11*np.zeros((4,1)))
 b2 = cp.Parameter((num_constraints2,1),value=np.zeros((num_constraints2,1)))
 const2 = [A2 @ u2 + A2_alpha @ alpha2_cp + slack_coeff @ slack  >= b2]
-const2 += [ u2[0,0]<=  ca * robot.gr / 1] #* robot.m
-const2 += [ u2[0,0]>= -cd * robot.gr / 1] #* robot.m
+const2 += [ u2[0,0]<=  ca * robot.gr / 2 ] #* robot.m
+const2 += [ u2[0,0]>= -cd * robot.gr / 2] #* robot.m
 const2 += [ alpha2_cp >= 0 ]
 if not update:
     const2 += [alpha2_cp == alpha2_ref_cp]
@@ -87,21 +87,6 @@ alpha2_ref_cp.value[3,0] = alpha31
 alpha2_cp.value[1,0] = alpha12
 alpha2_cp.value[2,0] = alpha21
 alpha2_cp.value[3,0] = alpha31
-
-# Alpha lower bound
-# max_u = robot. af * robot.m * robot.gr / 2
-# u2_lb = cp.Variable((1,1))
-# num_constraints2_lb  = 1
-# alpha2_lb = cp.Variable((num_constraints2_lb,1))
-# alpha2_ref_lb = cp.Parameter((num_constraints2_lb,1), value = alpha_nom*np.ones((num_constraints2_lb,1)))
-# Fr_lb = cp.Parameter()
-# A2_lb = cp.Parameter((num_constraints2_lb,1),value=np.zeros((num_constraints2_lb,1)))
-# A2_alpha_lb = cp.Parameter((num_constraints2_lb,num_constraints2_lb),value=alpha_nom*np.eye(num_constraints2_lb))
-# b2_lb = cp.Parameter((num_constraints2_lb,1),value=np.zeros((num_constraints2_lb,1)))
-# const2_lb = [A2_lb @ u2_lb  + A2_alpha_lb @ alpha2_lb >= b2_lb]
-# const2_lb += [ cp.abs( u2_lb[0,0] ) <= max_u ]
-# objective2_lb = cp.Minimize( cp.sum_squares( alpha2_lb - alpha2_ref_lb ) )
-# cbf_controller2_lb = cp.Problem( objective2_lb, const2_lb )
 
 # Simulation
 # ax.axhline(robot.X[1,0], label='Leader velocity')
@@ -134,35 +119,21 @@ alpha2_ref_cp.value[1,0] = alpha12
 alpha2_ref_cp.value[2,0] = alpha21
 alpha2_ref_cp.value[3,0] = alpha31
 
+alpha11_bound = 0
+
 for t in range(T):
     
+    if t*dt<15: ##10:
     # aL = -0.6
-    if t*dt<15: #10:
         aL = - 0.6 * (1 - np.tanh(  0.5/(10.1-t*dt) ) )
-        # aL = - 0.7 * (1 - np.tanh(  0.5/(10.1-t*dt) ) )
         # print(f"{np.tanh(  0.0/(20.1-t*dt) )}, aL: {aL}")
     else:
         aL = 0.0
         
         
-    alpha2_offset = 0.1
-    if alpha2_cp.value[1,0] > alpha12_nom+alpha2_offset:
-        alpha2_ref_cp.value[1,0] = alpha2_cp.value[1,0] - alpha2_offset
-    elif alpha2_cp.value[1,0] < alpha12_nom-alpha2_offset:
-        alpha2_ref_cp.value[1,0] = alpha2_cp.value[1,0] + alpha2_offset
-        
-    if alpha2_cp.value[2,0] > alpha21_nom+alpha2_offset:
-        alpha2_ref_cp.value[2,0] = alpha2_cp.value[2,0] - alpha2_offset
-    elif alpha2_cp.value[2,0] < alpha21_nom-alpha2_offset:
-        alpha2_ref_cp.value[2,0] = alpha2_cp.value[2,0] + alpha2_offset
-        
-    if alpha2_ref_cp.value[2,0] < alpha21_nom:
-        print(f"Hello error")
-        
-    if alpha2_cp.value[3,0] > alpha31_nom+alpha2_offset:
-        alpha2_ref_cp.value[3,0] = alpha2_cp.value[3,0] - alpha2_offset
-    elif alpha2_cp.value[3,0] < alpha31_nom-alpha2_offset:
-        alpha2_ref_cp.value[3,0] = alpha2_cp.value[3,0] + alpha2_offset
+    alpha2_ref_cp.value[1,0] = alpha12_nom
+    alpha2_ref_cp.value[2,0] = alpha21_nom
+    alpha2_ref_cp.value[3,0] = alpha31_nom
     
     # aL = - 0.6 * np.tanh(200/(t+dt))
 
@@ -210,29 +181,33 @@ for t in range(T):
         exit()
         
     # robot.step( u2.value )
+    print(f"alpha11: {alpha11}, alpha12: {alpha2_cp.value[1,0]}, {alpha11_bound}")
     
-    print(f"alpha11: {alpha11}, alpha12: {alpha2_cp.value[1,0]}")
     robot.step( np.array([ [u2.value[0,0]], [aL] ]) )
     
     
     if update:
         h1, h1_dot, dh1_dot_dx = robot.distance_barrier()
         alpha11_bound = - h1_dot / h1
-        alpha11_factor = 1.1
-        if alpha11 >= alpha11_bound:
-            alpha11_des = alpha11
-            offset = 1.0
-            if (alpha11>alpha11_nom+offset) and (alpha11-offset>alpha11_bound):
-                alpha11_des = alpha11-offset
-            elif (alpha11<alpha11_nom-offset) and (alpha11+offset>alpha11_bound):
-                alpha11_des = alpha11+offset
+        
+        if alpha11_nom >= alpha11_bound:
+            alpha11 = alpha11_nom
         else:
-            alpha11_des = alpha11_factor * alpha11_bound
+            alpha11 = alpha11_bound
+        # if alpha11 >= alpha11_bound:
+        #     alpha11_des = alpha11
+        #     offset = 1.0
+        #     if (alpha11>alpha11_nom+offset) and (alpha11-offset>alpha11_bound):
+        #         alpha11_des = alpha11-offset
+        #     elif (alpha11<alpha11_nom-offset) and (alpha11+offset>alpha11_bound):
+        #         alpha11_des = alpha11+offset
+        # else:
+        #     alpha11_des = 1.1 * alpha11_bound
             
-        alpha11_change = alpha11_des - alpha11    
-        alpha11_ddot = (alpha11_change - alpha11_dot*dt)*2/dt**2
-        alpha11_dot = alpha11_dot + alpha11_ddot * dt
-        alpha11 = alpha11_des
+        # alpha11_change = alpha11_des - alpha11    
+        # alpha11_ddot = (alpha11_change - alpha11_dot*dt)*2/dt**2
+        # alpha11_dot = alpha11_dot + alpha11_ddot * dt
+        # alpha11 = alpha11_des
         
     # print(f"t: {t}, alpha: {alpha2_lb.value} v: {robot.X[0,0]}, u:{u2.value}, slack: {slack.value}, const: {A2.value[1,0]*u2.value[0,0]-b2.value[1,0]}")
     

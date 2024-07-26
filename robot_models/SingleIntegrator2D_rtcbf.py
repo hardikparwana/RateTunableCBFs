@@ -20,6 +20,7 @@ class SingleIntegrator2D:
         self.palpha = palpha
 
         self.U = np.array([0,0]).reshape(-1,1)
+        self.U_prev = np.copy(self.U)
         self.xdot = np.zeros((2,1))
        
         # Plot handles
@@ -45,6 +46,7 @@ class SingleIntegrator2D:
         self.render_plot()
         self.Xs = np.append(self.Xs,self.X,axis=1)
         self.Us = np.append(self.Us,self.U,axis=1)
+        self.U_prev = np.copy(self.U)
         return self.X
 
     def render_plot(self):

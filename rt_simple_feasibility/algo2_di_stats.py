@@ -12,7 +12,7 @@ fig = plt.figure()
 ax = plt.axes(xlim=(-5,10),ylim=(-5,5))   
 ax.set_xlabel('X')
 ax.set_ylabel('Y')
-
+name = "test_name+"
 # fig2, ax2 = plt.subplots(2,1)
 # ax2[0].set_ylabel('Control Input 1')
 # ax2[1].set_ylabel('Control Input 2')
@@ -68,7 +68,7 @@ update = True
 print(f"t: {-1}, alpha1: {alpha1}, alpha2: {alpha2}")
 
 obs[0].step( np.array([1.5, 0.0]) )  #step( np.array([0.5+1.0*np.exp(-t*dt*0.), 0.0]) ) # left
-obs[1].step( np.array([0.5, 0.0]) ) # right 
+obs[1].step( np.array([0.3, 0.0]) ) # right 
 
 def simulate_scenario(robot_x):
     
@@ -83,6 +83,8 @@ def simulate_scenario(robot_x):
     alpha2.value = alpha2_nom * np.ones((num_constraints2,1))
     alpha2_ref.value = alpha2_nom*np.ones((num_constraints2,1))
     
+    # obs[0].U = np.array([1.5, 0.0]).reshape(-1,1)  #step( np.array([0.5+1.0*np.exp(-t*dt*0.), 0.0]) ) # left
+    # obs[1].U = np.array([0.5, 0.0]).reshape(-1,1)  # right 
     obs[0].U = np.array([1.5, 0.0]).reshape(-1,1)  #step( np.array([0.5+1.0*np.exp(-t*dt*0.), 0.0]) ) # left
     obs[1].U = np.array([0.5, 0.0]).reshape(-1,1)  # right 
     
@@ -92,6 +94,8 @@ def simulate_scenario(robot_x):
                 
                 if alpha1[j]<alpha1_bound[j]:
                     alpha1[j] = alpha1_bound[j]
+
+    us = np.zeros((2,1))
     print(f"alpha1: {alpha1}")
     for t in range(T):
 
@@ -128,10 +132,12 @@ def simulate_scenario(robot_x):
             b2.value[j,:] = -dh_dot_dxi @ robot.f() - dh_dot_dxj @ obs[j].xdot - alpha1[j] * h_dot - alpha1_dot[j] * h
             
             # alpha2_ref
-            if alpha2.value[j,0] < alpha2_nom - 1.0:
-                alpha2_ref.value[j,0] = alpha2.value[j,0]+1.0
-            elif alpha2.value[j,0] > alpha2_nom + 1.0:
-                alpha2_ref.value[j,0] = alpha2.value[j,0] - 1.0
+            alpha2_ref.value[j,0] = alpha2_nom
+            # alpha2_offset = 0.5 #1.0
+            # if alpha2.value[j,0] < alpha2_nom - alpha2_offset:
+            #     alpha2_ref.value[j,0] = alpha2.value[j,0]+alpha2_offset
+            # elif alpha2.value[j,0] > alpha2_nom + alpha2_offset:
+            #     alpha2_ref.value[j,0] = alpha2.value[j,0] - alpha2_offset
         v_ref = -1.5 * ( robot.X[0:2] - goal )
         u2_ref.value = - 1.5 * ( robot.X[2:4] - v_ref )
         
@@ -147,11 +153,16 @@ def simulate_scenario(robot_x):
             # return t
             
         robot.step( u2.value )  
+        us = np.append(us, u2.value, axis=1 )
         if t*dt<=3.5:
-            obs[0].step( np.array([1.5, 0.0]) )  #step( np.array([0.5+1.0*np.exp(-t*dt*0.), 0.0]) ) # left
+            # obs[0].step( np.array([1.5, 0.0]) ) #1.5 #step( np.array([0.5+1.0*np.exp(-t*dt*0.), 0.0]) ) # left
+            # obs[1].step( np.array([0.5, 0.0]) ) # right 
+            obs[0].step( np.array([2.0, 0.0]) ) #1.5 #step( np.array([0.5+1.0*np.exp(-t*dt*0.), 0.0]) ) # left
             obs[1].step( np.array([0.5, 0.0]) ) # right 
         elif t*dt<4.0:
-            obs[0].step( np.array([1.5 - 1.0*( np.tanh( (t*dt-3.75)/(3.5-t*dt)/(t*dt-4.0) )/2+0.5 ), 0.0]) )
+            # obs[0].step( np.array([1.5 - 1.0*( np.tanh( (t*dt-3.75)/(3.5-t*dt)/(t*dt-4.0) )/2+0.5 ), 0.0]) )
+            # obs[1].step( np.array([0.5, 0.0]) ) # right 
+            obs[0].step( np.array([2.0 - 1.0*( np.tanh( (t*dt-3.75)/(3.5-t*dt)/(t*dt-4.0) )/2+0.5 ), 0.0]) )
             obs[1].step( np.array([0.5, 0.0]) ) # right 
         else: 
             obs[0].step( np.array([0.5, 0.0]) )  #
@@ -177,21 +188,24 @@ def simulate_scenario(robot_x):
                 #     exit()
                      
                 alpha1_bound[j] = - h_dot / h
-                
-                if alpha1[j] >=alpha1_bound[j]:#-0.01: # no change required
-                    alpha1_des = alpha1[j]
-                    offset = 1.0
-                    if (alpha1[j]>alpha1_nom+offset) and (alpha1[j]-offset>alpha1_bound[j]):
-                        alpha1_des = alpha1[j]-offset
-                    elif (alpha1[j]<alpha1_nom-offset) and (alpha1[j]+offset>alpha1_bound[j]):
-                        alpha1_des = alpha1[j]+offset
-                else: # change required
-                    alpha1_des = 1.1*alpha1_bound[j]
+                if alpha1_nom>=alpha1_bound[j]:
+                    alpha1[j] = alpha1_nom
+                else:
+                    alpha1[j] = alpha1_bound[j]
+                # if alpha1[j] >=alpha1_bound[j]:#-0.01: # no change required
+                #     alpha1_des = alpha1[j]
+                #     offset = 1.0
+                #     if (alpha1[j]>alpha1_nom+offset) and (alpha1[j]-offset>alpha1_bound[j]):
+                #         alpha1_des = alpha1[j]-offset
+                #     elif (alpha1[j]<alpha1_nom-offset) and (alpha1[j]+offset>alpha1_bound[j]):
+                #         alpha1_des = alpha1[j]+offset
+                # else: # change required
+                #     alpha1_des = 1.1*alpha1_bound[j]
                     
-                alpha1_change = alpha1_des - alpha1[j]    
-                alpha1_ddot[j] = (alpha1_change - alpha1_dot[j]*dt)*2/dt**2
-                alpha1_dot[j] = alpha1_dot[j] + alpha1_ddot[j] * dt
-                alpha1[j] = alpha1_des
+                # alpha1_change = alpha1_des - alpha1[j]    
+                # alpha1_ddot[j] = (alpha1_change - alpha1_dot[j]*dt)*2/dt**2
+                # alpha1_dot[j] = alpha1_dot[j] + alpha1_ddot[j] * dt
+                # alpha1[j] = alpha1_des
             
         # alpha2 derivative
         # choose alpha2 as usual.. by the QP optimization itself            
@@ -214,7 +228,10 @@ def simulate_scenario(robot_x):
         
         # fig2.canvas.draw()
         # fig2.canvas.flush_events()
-        
+    
+    # fig_, ax_ = plt.subplots(2)
+    # ax_[0].plot(us[0,:])
+    # ax_[1].plot(us[1,:])
     return T
     
 
@@ -224,7 +241,8 @@ simulate_scenario(1.0)
 # plt.ioff()
 # plt.show()
 
-xs = np.linspace(-1.95,2.95,50)
+# xs = np.linspace(-1.95,2.95,50)
+xs = np.linspace(-1.95,2.95,30)
 
 update = True
 tsim = []
@@ -263,20 +281,20 @@ ax4.set_xlim([-1.95, 3])
 ax4.bar(xs, height=0.2, width=0.2, bottom=0, color=my_cmap(np.asarray(tsim)/tf))
 sm = ScalarMappable(cmap=my_cmap, norm=plt.Normalize(tf))
 sm.set_array([])
-cbar4 = fig4.colorbar(sm)
+cbar4 = fig4.colorbar(sm, ax=ax4)
 
 fig5, ax5 = plt.subplots()
 ax5.set_xlim([-1.95, 3])
 ax5.bar(xs, height=0.2, width=0.2, bottom=0, color=my_cmap(np.asarray(tsim2)/tf))
 sm2 = ScalarMappable(cmap=my_cmap, norm=plt.Normalize(tf))
 sm2.set_array([])
-cbar5 = fig5.colorbar(sm)
+cbar5 = fig5.colorbar(sm, ax=ax5)
 
-fig4.savefig("di_adaptive.eps")
-fig4.savefig("di_adaptive.png")
+fig4.savefig(name+"di_adaptive.eps")
+fig4.savefig(name+"di_adaptive.png")
 
-fig5.savefig("di_fixed.eps")
-fig5.savefig("di_fixed.png")
+fig5.savefig(name+"di_fixed.eps")
+fig5.savefig(name+"di_fixed.png")
 
 
 

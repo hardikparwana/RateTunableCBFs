@@ -42,7 +42,7 @@ class ACC2D:
         self.a_max = 0.3 * self.gr
         self.af = 0.4#0.25
         self.vmin = 0.0
-        self.vmax = 30
+        self.vmax = 30 #30
         self.lp = 10
         
     def Fr(self):
