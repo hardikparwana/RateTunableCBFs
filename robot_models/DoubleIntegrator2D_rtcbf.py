@@ -14,13 +14,14 @@ class DoubleIntegrator2D:
         
         X0 = X0.reshape(-1,1)
         self.X = X0
+        self.X_prev = np.copy(self.X)
         self.dt = dt
         self.id = id
         self.color = color
         self.palpha = palpha
 
         self.U = np.array([0,0]).reshape(-1,1)
-        self.xdot = np.zeros((2,1))
+        self.xdot = np.append( self.X[0:2],np.zeros((2,1)), axis=0 )
        
         # Plot handles
         self.plot = plot
@@ -38,7 +39,7 @@ class DoubleIntegrator2D:
         return np.array([ [0, 0], [0, 0], [1, 0],[0, 1] ])
         
     def step(self,U): #Just holonomic X,T acceleration
-
+        self.X_prev = np.copy(self.X)
         self.U = U.reshape(-1,1)
         self.xdot = self.f() + self.g() @ self.U
         self.X = self.X + self.xdot * self.dt        
@@ -58,13 +59,35 @@ class DoubleIntegrator2D:
         dV_dxj = -2*( self.X - G ).T
         return V, dV_dxi, dV_dxj
     
-    def obstacle_barrier(self, agent, d_min, ):
-        h = np.linalg.norm( self.X[0:2] - agent.X[0:2] )**2 - d_min**2
+    def obstacle_barrier(self, agent, d_min,prev_state=False, agent_type='SI' ):
+        if prev_state:
+            h = np.linalg.norm( self.X[0:2] - agent.X_prev[0:2] )**2 - d_min**2
+            if agent_type=='SI':
+                h_dot = 2 * (self.X[0:2]-agent.X[0:2]).T @ (self.X[2:4]-agent.xdot[0:2]) # agent.U
+                dh_dot_dxi = 2 * np.append( (self.X[2:4]-agent.U).T, (self.X[0:2]-agent.X[0:2]).T, axis=1 )
+                dh_dot_dxj = -2 * (self.X[2:4]-agent.xdot[0:2]).T
+            elif agent_type=='DI':
+                h_dot = 2 * (self.X[0:2]-agent.X[0:2]).T @ (self.X[2:4]-agent.X[2:4])
+                dh_dot_dxi = 2 * np.append( (self.X[2:4]-agent.X[2:4]).T, (self.X[0:2]-agent.X[0:2]).T, axis=1 )
+                dh_dot_dxj = -2 * np.append( (self.X[2:4]-agent.X[2:4]).T, (self.X[0:2]-agent.X[0:2]).T , axis=1 )
+        else:
+            h = np.linalg.norm( self.X[0:2] - agent.X[0:2] )**2 - d_min**2
+            if agent_type=='SI':
+                h_dot = 2 * (self.X[0:2]-agent.X[0:2]).T @ (self.X[2:4]-agent.xdot[0:2]) # agent.U
+                dh_dot_dxi = 2 * np.append( (self.X[2:4]-agent.U).T, (self.X[0:2]-agent.X[0:2]).T, axis=1 )
+                dh_dot_dxj = -2 * (self.X[2:4]-agent.xdot[0:2]).T
+            elif agent_type=='DI':
+                h_dot = 2 * (self.X[0:2]-agent.X[0:2]).T @ (self.X[2:4]-agent.X[2:4])
+                dh_dot_dxi = 2 * np.append( (self.X[2:4]-agent.X[2:4]).T, (self.X[0:2]-agent.X[0:2]).T, axis=1 )
+                dh_dot_dxj = -2 * np.append( (self.X[2:4]-agent.X[2:4]).T, (self.X[0:2]-agent.X[0:2]).T , axis=1 )
         
         # assert(h>=-0.02)
         # if (h<=0):
         #     h=0.01
-        h_dot = 2 * (self.X[0:2]-agent.X[0:2]).T @ (self.X[2:4]-agent.U)
-        dh_dot_dxi = 2 * np.append( (self.X[2:4]-agent.U).T, (self.X[0:2]-agent.X[0:2]).T, axis=1 )
-        dh_dot_dxj = -2 * (self.X[2:4]-agent.U).T
+
+        # h_dot = 2 * (self.X[0:2]-agent.X[0:2]).T @ (self.X[2:4]-agent.U)
+        # dh_dot_dxi = 2 * np.append( (self.X[2:4]-agent.U).T, (self.X[0:2]-agent.X[0:2]).T, axis=1 )
+        # dh_dot_dxj = -2 * (self.X[2:4]-agent.U).T
+        
+        
         return h, h_dot, dh_dot_dxi, dh_dot_dxj
