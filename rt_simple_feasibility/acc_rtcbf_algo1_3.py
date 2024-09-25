@@ -4,7 +4,7 @@ import cvxpy as cp
 import matplotlib.pyplot as plt
 from robot_models.Acc_simple_rtcbf import *
 # from robot_models.DoubleIntegrator2D import *
-
+plt.rcParams.update({'font.size': 16})
 # figure
 plt.ion()
 fig = plt.figure()
@@ -12,7 +12,7 @@ ax = plt.axes()
 ax.set_xlabel('time (s)')
 ax.set_title('Velocity')
 
-name = "test1_3_"
+name = "acc_proposed_"
 
 fig2, ax2 = plt.subplots(7,1)
 ax2[0].set_title('Barrier')
@@ -138,14 +138,14 @@ for t in range(T):
     
     # aL = -0.6
     if t*dt<15: #10:
-        aL = - 0.6 * (1 - np.tanh(  0.5/(10.1-t*dt) ) )
+        aL = - 0.6 * (1 - np.tanh(  0.5/(15.1-t*dt) ) )
         # aL = - 0.7 * (1 - np.tanh(  0.5/(10.1-t*dt) ) )
         # print(f"{np.tanh(  0.0/(20.1-t*dt) )}, aL: {aL}")
     else:
         aL = 0.0
         
         
-    alpha2_offset = 0.1
+    alpha2_offset = 0.1 #0.1
     if alpha2_cp.value[1,0] > alpha12_nom+alpha2_offset:
         alpha2_ref_cp.value[1,0] = alpha2_cp.value[1,0] - alpha2_offset
     elif alpha2_cp.value[1,0] < alpha12_nom-alpha2_offset:
@@ -295,12 +295,14 @@ ax7.axhline(ca.value * robot.gr, color='k', linestyle='--')
 ax7.axhline(-cd.value * robot.gr, color='k', linestyle='--')
 ax7.set_xlabel('time (s)')
 ax7.legend()
+ax7.set_aspect(1.0)
 
 fig7.savefig(name+'acc_input.png')
 fig7.savefig(name+'acc_input.eps')
 
 fig4, ax4 = plt.subplots()
 ax4.plot(ts, hs, 'k', label='barrier function')
+ax4.set_aspect(0.1)
 ax4.legend()
 
 fig4.savefig(name+'acc_barrier.png')
@@ -317,6 +319,7 @@ fig5.savefig(name+'acc_alpha1.eps')
 
 fig6, ax6 = plt.subplots()
 ax6.plot(ts, alpha12s, 'k', label='alpha12')
+ax6.set_aspect(40.0)
 ax6.legend()
 
 fig6.savefig(name+'acc_alpha2.png')

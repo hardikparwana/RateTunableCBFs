@@ -12,23 +12,25 @@ fig = plt.figure()
 ax = plt.axes(xlim=(-10,7),ylim=(-7,7))   
 ax.set_xlabel('X')
 ax.set_ylabel('Y')
-name = "test_proposed_"
-# name = "standard_"
-# name = "standard_proposed_alpha1_"
+# name = "si_si_proposed_alpha2dot0.5"
+# name = "si_si_stats+standard_"
+name = "si_si_fixed_"
 
 # t=2.6
 
+proposed = False # for alpha2_ref
+standard = False #True
+
 # sim parameters
 dt = 0.05
-tf = 10 #5.5
+tf = 6 #10 #5.5
 d_min = 0.3 #0.5#0.3
 T = int( tf/dt )
-alpha1_nom = 4 #1.8#0.5#1.0
-alpha2_nom = 10 #5#1.0
-alpha_si = 1.5
 
-robot = DoubleIntegrator2D(np.array([6,1.0,0,0]), dt, ax, id = 0, color = 'r' )
-# robot = SingleIntegrator2D(np.array([6,1.0]), dt, ax, id = 0, color = 'r' )
+alpha2_nom = 5 #10 #5#1.0
+alpha_si = 5.0 #1.5
+
+robot = SingleIntegrator2D(np.array([6,1.0]), dt, ax, id = 0, color = 'r' )
 robot_goal = np.array([ -4,0 ]).reshape(-1,1)
 ax.scatter( robot_goal[0], robot_goal[1], facecolor='none', edgecolor='r' )
 
@@ -70,7 +72,6 @@ u2_ref = cp.Parameter((2,1),value = np.zeros((2,1)) )
 num_constraints  = len(obs)
 alpha2 = cp.Variable((num_constraints, 1), value=np.zeros((num_constraints, 1)))
 alpha2_ref = cp.Parameter((num_constraints, 1), value=alpha2_nom*np.ones((num_constraints, 1)))
-# slack = cp.Variable((num_constraints,1))
 A2= cp.Parameter((num_constraints,2),value=np.zeros((num_constraints,2)))
 A2_alpha = cp.Parameter((num_constraints,num_constraints),value=np.zeros((num_constraints,num_constraints)))
 b2 = cp.Parameter((num_constraints,2),value=np.zeros((num_constraints,2)))
@@ -78,25 +79,41 @@ const2 = [A2 @ u2 + A2_alpha @ alpha2 >= b2]
 const2 += [ cp.abs(u2[0,0]) <= 2.0]
 const2 += [ cp.abs(u2[1,0]) <= 2.0]
 const2 += [ alpha2 >= 0]
-# const2 += [ alpha2 == alpha2_ref]
+if not ( (proposed==True) or (standard==True) ) :
+    print(f"Fixed Parameters")
+    const2 += [ alpha2 == alpha2_ref]
 objective2 = cp.Minimize(  cp.sum_squares(u2-u2_ref) + 10000 * cp.sum_squares(alpha2-alpha2_ref) ) #+ 100 * cp.sum_squares(slack) )
 problem2 = cp.Problem( objective2, const2 )
 # alpha = 1.5
 
-alpha1 = alpha1_nom * np.ones(len(obs))
-alpha1_dot = 0.0 * np.ones(len(obs))
-
-alpha2s = np.zeros((len(obs),1))
-update = True
+# alpha2s = np.zeros((len(obs),1))
+# update = True
 
 metadata = dict(title='Movie Test', artist='Matplotlib',comment='Movie support!')
 writer = FFMpegWriter(fps=12, metadata=metadata)
 
-with writer.saving(fig, 'media/'+name+'animation.mp4', 100): 
+def simulate(robot_x):
 
+    alpha2.value = np.zeros((num_constraints, 1))
+
+    robot = SingleIntegrator2D(np.array([6,1.0]), dt, ax, id = 0, color = 'r' )
+    robot_goal = np.array([ -4,0 ]).reshape(-1,1)
+    ax.scatter( robot_goal[0], robot_goal[1], facecolor='none', edgecolor='r' )
+
+
+    obs = []
+    obs.append( SingleIntegrator2D(np.array([-2,0]), dt, ax, id = 0, color = 'k' ) )
+    obs.append( SingleIntegrator2D(np.array([ 3,6]), dt, ax, id = 1, color = 'k' ) )
+    obs.append( SingleIntegrator2D(np.array([-2,4]), dt, ax, id = 2, color = 'k' ) )
+    obs.append( SingleIntegrator2D(np.array([ 3,-4]), dt, ax, id = 3, color = 'k' ) )
+    obs.append( SingleIntegrator2D(np.array([-2,-3]), dt, ax, id = 4, color = 'k' ) )
+    obs.append( SingleIntegrator2D(np.array([ -3,-5]), dt, ax, id = 5, color = 'k' ) )
+
+    alpha2s = np.zeros((len(obs),1))
+    update = True #True
 
     for t in range(T):
-
+        # print(t*dt)
         # other agent controller
         for i in range(len(obs)):
             index = 0
@@ -105,40 +122,26 @@ with writer.saving(fig, 'media/'+name+'animation.mp4', 100):
             for j in range(len(obs)):
                 if i==j:
                     continue
-                h, dh_dxi, dh_dxj = obs[i].obstacle_barrier(obs[j], d_min)
+                h, dh_dxi, dh_dxj = obs[i].obstacle_barrier(obs[j], d_min, prev_state=False)
                 A2_si.value[index,:] = dh_dxi
-                b2_si.value[index] = -alpha_si * h - dh_dxj @ obs[j].U_prev
+                b2_si.value[index] = -alpha_si * h - dh_dxj @ obs[j].xdot #obs[j].U_prev
+                index = index + 1
             problem_si.solve(solver=cp.GUROBI)
             obs[i].step( u2_si.value )
             obs[i].render_plot()
 
 
         kx = 1.5 #0.8
-        kv = 3.0 #2.0
         # Ego agent controller: METHOD 1
         vd = -kx * ( robot.X[0:2] - robot_goal )
-        u2_ref.value = -kv * ( robot.X[2:4] - vd )
+        u2_ref.value = vd #-kv * ( robot.X[2:4] - vd )
         h_min = 100
-        psi_min = 100
         for j in range(len(obs)):
 
-            h, h_dot, dh_dot_dxi, dh_dot_dxj = robot.obstacle_barrier(obs[j], d_min) 
-            print(f"h")
-            if update:
-                max_alpha1_dot = 1
-                max_alpha2_dot = 1
-
-                alpha1_old = alpha1[j]
-                alpha1_bound = - h_dot / max(h, 0.001)
-                alpha11_factor = 1.5
-
-                if alpha1_nom >= alpha11_factor * alpha1_bound:
-                    alpha1[j] = alpha1_nom
-                else:
-                    alpha1[j] = alpha11_factor * alpha1_bound
-                print(h_dot + alpha1[j] * h)
-                alpha1_dot[j] = (alpha1[j]-alpha1_old)/dt
-                # alpha1_dot[j] = np.clip( alpha1_dot, -max_alpha1_dot, max_alpha1_dot )
+            h, dh_dxi, dh_dxj = robot.obstacle_barrier(obs[j], d_min, prev_state=True) 
+            # print(f"h")
+            if proposed:
+                max_alpha2_dot = 0.5 #1.0 #0.5 #1
 
                 alpha2_offset = max_alpha2_dot  * dt
                 if alpha2.value[j,0] > alpha2_nom + alpha2_offset:
@@ -147,23 +150,19 @@ with writer.saving(fig, 'media/'+name+'animation.mp4', 100):
                     alpha2_ref.value[j,0] = alpha2.value[j,0] + alpha2_offset
 
             h_min = min(h_min, h)
-            A2.value[j,:] = dh_dot_dxi @ robot.g()
-            A2_alpha.value[j,j] = max(h_dot + alpha1[j] * h, 0.0)
-            psi_min = min( psi_min, A2_alpha.value[j,j] )
-            b2.value[j,:] = -dh_dot_dxi @ robot.f() - dh_dot_dxj @ obs[j].xdot - alpha1[j] * h_dot - alpha1_dot[j] * h
-        print(f"B: t: {t*dt}, alpha2: {alpha2.value.T}, h_min: {h_min}, psi_min: {psi_min}")    
+            A2.value[j,:] = dh_dxi @ robot.g()
+            A2_alpha.value[j,j] = max(h, 0.0)
+            b2.value[j,:] = -dh_dxi @ robot.f() - dh_dxj @ obs[j].xdot
+        # print(f"B: t: {t*dt}, alpha2: {alpha2.value.T}, h_min: {h_min}, psi_min: {psi_min}")    
         problem2.solve(solver=cp.GUROBI) #, reoptimize=True)    
         if not (problem2.status=='optimal' or problem2.status=='optimal_inaccurate'):
-            print(f"ERROR")
+            print(f"ERROR at t= {t*dt}")
+            return t*dt
             break
         alpha2s = np.append( alpha2s, alpha2.value, axis=1 )
-        print(f"A: t: {t*dt}, alpha2: {alpha2.value.T}, h_min: {h_min}, psi_min: {psi_min}")
+        # print(f"A: t: {t*dt}, alpha2: {alpha2.value.T}, h_min: {h_min}, psi_min: {psi_min}")
         robot.step( u2.value )
         robot.render_plot()
-
-        writer.grab_frame()
-
-
 
         # Ego agent controller: single integrator
         # vd = -kx * ( robot.X[0:2] - robot_goal )
@@ -181,29 +180,66 @@ with writer.saving(fig, 'media/'+name+'animation.mp4', 100):
         # robot.step( u2.value )
         # robot.render_plot()
 
-
-
-
         fig.canvas.draw()
         fig.canvas.flush_events()
+
+    return t*dt
         
+robot_x = np.array([6,1.0,0,0])
 
+xsize = 5 #10 #20
+ysize = 10 #20 #50
+posx = np.linspace( 4, 6, xsize )
+posy = np.linspace( -4, 4, ysize )
+xv, yv = np.meshgrid( posx, posy )
+
+times = np.zeros((ysize, xsize))
+
+for i in range(posx.size):
+    for j in range(posy.size):
+        times[j, i] = simulate(np.array([ posx[i], posy[j], 0, 0 ]))
+
+from matplotlib import cm
+from matplotlib.cm import ScalarMappable
 plt.ioff()
+times = times/tf
+my_cmap = plt.get_cmap("viridis")
+sm = ScalarMappable(cmap=my_cmap, norm=plt.Normalize(tf))
+sm.set_array([])
 
-fig_u, ax_u = plt.subplots(2)
-ax_u[0].plot(robot.Us[0,1:], "b*")
-ax_u[1].plot(robot.Us[1,1:], 'b*')
-# ax_u[2].plot(alpha2s)
-ax_u[0].set_ylabel(r'$a_x$')
-ax_u[1].set_ylabel(r'$a_y$')
+fig_t, ax_t = plt.subplots()
+# h = ax_t.contourf(posx, posy, times, color=my_cmap(times))
+# # fig_t.colorbar(h)
+# cbar = fig_t.colorbar(sm, ax=ax_t)
 
-fig_alpha, ax_alpha = plt.subplots(len(obs))
-for i in range(len(obs)):
-    ax_alpha[i].plot(alpha2s[i,1:], 'b*')
-    ax_alpha[i].set_ylabel(r'$\alpha$'+f"{i}")
+pos = ax_t.imshow( times, cmap='RdBu', interpolation='bilinear',extent=[4,6,-4,4], vmin=0, vmax=1 )
+fig_t.colorbar(pos, ax=ax_t, label='Time Steps to infeasibility')
+ax_t.set_ylabel("a")
+ax_t.set_xlabel("b")
+# print(f"")
 
-fig_u.savefig('media/'+name+"control.png")
-fig_u.savefig('media/'+name+"alphas.png")
+
+# simulate(robot_x)
+
+
+
+# fig_u, ax_u = plt.subplots(2)
+# ax_u[0].plot(robot.Us[0,1:], "b*")
+# ax_u[1].plot(robot.Us[1,1:], 'b*')
+# # ax_u[2].plot(alpha2s)
+# ax_u[0].set_ylabel(r'$a_x$')
+# ax_u[1].set_ylabel(r'$a_y$')
+
+# fig_alpha, ax_alpha = plt.subplots(len(obs))
+# for i in range(len(obs)):
+#     ax_alpha[i].plot(alpha2s[i,1:], 'b*')
+#     ax_alpha[i].set_ylabel(r'$\alpha$'+f"{i}")
+
+# fig_u.savefig('media/'+name+"control.png")
+# fig_u.savefig('media/'+name+"alphas.png")
+
+fig_t.savefig('media/'+name+'stats.png')
+fig_t.savefig('media/'+name+'stats.eps')
 
 plt.show()
 
